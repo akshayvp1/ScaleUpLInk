@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import morgan from 'morgan';
 import fullRouter from './routes/router';
 import './config/container'
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 const app = express();
@@ -30,6 +31,7 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', creden
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use('/api', fullRouter);
 

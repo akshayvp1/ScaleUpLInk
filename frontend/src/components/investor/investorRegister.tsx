@@ -1,6 +1,6 @@
-import { Card, CardContent } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,8 @@ import { useForm } from "react-hook-form";
 import authService from "../../services/user/authService";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/app/store";
+import buinessIMg from "../../assets/business.jpg"
+
 
 interface InvestorRegistrationForm {
   name:string,
@@ -76,7 +78,7 @@ export default function InvestorRegistrationPage() {
         className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl shadow-lg overflow-hidden"
       >
         <div className="hidden md:flex items-center justify-center bg-white p-8">
-          <img src="src/assets/business.jpg" alt="Investor Registration" className="max-w-xs" />
+          <img src={buinessIMg} alt="Investor Registration" className="max-w-xs" />
         </div>
         <Card className="w-full p-6 border rounded-none">
           <CardContent className="space-y-4">

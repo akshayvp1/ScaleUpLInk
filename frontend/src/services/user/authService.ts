@@ -17,6 +17,18 @@ interface RegisterCredentials {
   contactNumber?: string;
   role: "entrepreneur" | "investor";
 }
+interface InterestData {
+  email?: string;
+  profession?: string;
+  interest: string[];
+}
+interface updateData{
+        name:string|null,
+        contactNumber ?: string,
+        profileImage ?: string,
+        bio ?: string,
+        email?:string
+}
 
 interface IAuthServiceEntrepreneur {
   sendOtp(credentials: RegisterCredentials, role: "entrepreneur" | "investor"): Promise<MockSignUpResult>;
@@ -28,7 +40,8 @@ interface IAuthServiceEntrepreneur {
   verifyGoogleToken(credential: string): Promise<GoogleSignInResult>;
   completeProfile(userData:Partial<IUser>):Promise<void>
   entrepeneruRole(userData:Partial<IUser>):Promise<void>
-  addInterests(data: Partial<IUser>): Promise<void>
+  addInterests(data: InterestData): Promise<void>
+  updateDetail(data:updateData):Promise<void>
 }
 
 type SignInResult = { user: IUser };
@@ -94,60 +107,57 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
     }
   }
 
-  async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<SignInResult> {
+  // async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<SignInResult> {
+  //   try {
+  //     const response = await api[role].post("/signin", credentials);
+  //     console.log(response, "hhhh");
+  //     console.log(response.data.user.email, "fffff");
+  //     console.log(response.data.accessToken, "ddddd");
+  //     const {accessToken,user}=response.data
+  //     store.dispatch(
+  //       signIn({
+  //         email:user.email,
+  //         role:user.role,
+  //         token:accessToken
+  //       })
+  //      )
+      
+  //      store.dispatch(setTempUser({ tempUser: user }));
+  //     return user;
+  //   } catch (error: unknown) {
+  //     if (axios.isAxiosError(error)) {
+  //       throw new Error(error.response?.data?.message || "Login failed");
+  //     }
+  //     throw new Error("An unknown error occurred during login");
+  //   }
+  // }
+  
+  async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<{ user: any; accessToken: string }> {
     try {
       const response = await api[role].post("/signin", credentials);
-      console.log(response, "hhhh");
-      console.log(response.data.data.user.email, "fffff");
-      console.log(response.data.data.accessToken, "ddddd");
-      store.dispatch(signIn({
-        email: response.data.data.user.email,
-        role: response.data.data.user.role,
-        token: response.data.data.accessToken,
-        isAuthenticated: true,
-      }));
-      return response.data;
+      const { accessToken, user } = response.data;
+      
+      store.dispatch(signIn({ email: user.email, role: user.role, token: accessToken }));
+      store.dispatch(setTempUser({ tempUser: user }));
+      
+      return { user, accessToken }; // ✅ Fix: Return both user and token
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.message || "Login failed");
       }
       throw new Error("An unknown error occurred during login");
     }
+}
+async logout(): Promise<void> {
+  try {
+    await api.shared.post('/auth/signout'); // Fixed typo from 'singout' to 'signout'
+    store.dispatch(signOut()); // Dispatch Redux action to clear auth state
+  } catch (error) {
+    console.error('Logout error:', error);
+    throw error; // Re-throw error so it can be caught in the component
   }
-  
-  // async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
-  //   try {
-  //     console.log("Google Auth Credential:", credential);
-  //     const response = await api["shared"].post("/googleAuth", { credential });
-  //     const { user, accessToken, partialUser } = response.data;
-  //     console.log(user,"ggggggg");
-  //     if (partialUser) {
-  //       store.dispatch(setTempUser({ tempUser: user }));
-  //       console.log("Partial user detected, requiring additional information.");
-  //       const userData = store.getState().tempUser;
-  //       console.log(userData,'jjjjjjjj');
-  //       return { partialUser, accessToken };
-  //     }
+}
 
-  //     store.dispatch(
-  //       signIn({
-          
-  //         email: user.email,
-  //         role: user.role,
-  //         token: accessToken,
-  //         isAuthenticated: true,
-  //       })
-  //     );
-
-  //     return { partialUser: false, accessToken };
-  //   } catch (error) {
-  //     console.error("Google Authentication Error:", error);
-  //     if (axios.isAxiosError(error)) {
-  //       throw new Error(error.response?.data?.message || "Google authentication failed");
-  //     }
-  //     throw new Error("An unknown error occurred during Google authentication");
-  //   }
-  // }
 
   async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
     try {
@@ -177,7 +187,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
         token:accessToken
       })
     )
-    store.dispatch(setTempUser(user))
+    store.dispatch(setTempUser({ tempUser: user }));
 
       return partialUser
     } catch (error) {
@@ -244,15 +254,67 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
     }
   }
 
-  async addInterests(data: Partial<IUser>): Promise<void>{
+  async addInterests(data: InterestData): Promise<void> {
+    try {
+      console.log("Adding interests:", data);
+      const response = await api.shared.patch("/addInterests", data);
+      console.log(response,"hpppppp")
+      // Optionally update the user in the store if the backend returns updated user data
+      if (response.data.user) {
+        store.dispatch(setTempUser({ tempUser: response.data.user }));
+      }
+    } catch (error) {
+      console.error("Error adding interests:", error);
+      
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || "Failed to add interests");
+      }
+      
+      throw new Error("An unknown error occurred while adding interests");
+    }
+  }
+  async updateDetail(data:updateData):Promise<void>{
     try{
-     
-      await api.shared.patch("/addIntrests",{data})
+      const response = await api.shared.patch("/update-data", data);
+      if (response.data.user) {
+        store.dispatch(setTempUser({ tempUser: response.data.user }));
+      }
+    } catch (error) {
+      console.error("Error adding interests:", error);
+      
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || "Failed to add interests");
+      }
+      
+      throw new Error("An unknown error occurred while adding interests");
+    }
+  }
+   async forgotPassword(email:string):Promise<void>{
+     try{
+         const response = await api.shared.post('/forgot-password',{email})
+         return response.data
+     }catch(error){
+      console.log(error)
+     }
+   }
+   async verifyforgotOtp(email: string, otp: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await api.shared.post<{ success: boolean; message: string }>('/forgot-password-otp', { email, otp });
+        return response.data;
+    } catch (error) {
+        console.error("Error in verifyforgotOtp:", (error as Error).message);
+        throw new Error("Something went wrong while verifying OTP");
+    }
+}
 
+   async changePassword(email:string,newPassword:string):Promise<void>{
+    try{
+     const response = await api.shared.post('/change-password',{email,newPassword})
+     return response.data
     }catch(error){
       console.log(error)
     }
-  }
+   }
 
   async signOut(role: "entrepreneur" | "investor"): Promise<void> {
     try {

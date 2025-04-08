@@ -1,393 +1,4 @@
-// import { Card, CardContent } from "../ui/card";
-// import { Input } from "../ui/input";
-// import { Button } from "../ui/button";
-// import { Separator } from "../ui/separator";
-// import { FaGoogle } from "react-icons/fa";
-// import { useState, useEffect } from "react";
-// import { motion } from "framer-motion";
-// import { useNavigate } from "react-router-dom";
-// import { Link } from "react-router-dom";
-// import authService from "../../services/user/authService";
 
-// interface LoginCredentials {
-//   email: string;
-//   password: string;
-// }
-
-// export default function LoginPage() {
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [successMessage, setSuccessMessage] = useState<string>("");
-//   const [errorMessage, setErrorMessage] = useState<string>("");
-//   const [isLoading, setIsLoading] = useState<boolean>(false);
-//   const [isFormValid, setIsFormValid] = useState<boolean>(false);
-//   const [emailError, setEmailError] = useState<string>("");
-//   const [passwordError, setPasswordError] = useState<string>("");
-//   const navigate = useNavigate();
-
-//   // Validate form whenever email or password changes
-//   useEffect(() => {
-//     validateForm();
-//   }, [email, password]);
-
-//   // Validate the form fields
-//   const validateForm = () => {
-//     let valid = true;
-    
-//     // Reset error messages
-//     setEmailError("");
-//     setPasswordError("");
-    
-//     // Validate email
-//     if (!email.trim()) {
-//       valid = false;
-//     } else if (!validateEmail(email)) {
-//       setEmailError("Please enter a valid email address ending with .com");
-//       valid = false;
-//     }
-    
-//     // Validate password
-//     if (!password.trim()) {
-      
-//       valid = false;
-//     }
-    
-//     setIsFormValid(valid);
-//   };
-  
-//   // Email validation function
-//   const validateEmail = (email: string): boolean => {
-//     const regex = /^[^\s@]+@[^\s@]+\.[c][o][m]$/;
-//     return regex.test(email);
-//   };
-
-//   const handleSubmit = async () => {
-//     // Validate form before submission
-//     validateForm();
-//     if (!isFormValid) return;
-    
-//     setIsLoading(true);
-//     setErrorMessage("");
-//     setSuccessMessage("");
-
-//     try {
-//       const loginData: LoginCredentials = { email, password };
-//       const result = await authService.signIn(loginData);
-//       console.log(result);
-
-//       if (result) {
-//         setSuccessMessage("OTP Sent Successfully 🎉");
-//         // Optionally navigate after a short delay or based on your flow:
-//         setTimeout(() => navigate('/profession'), 2000);
-//       } else {
-//         setErrorMessage("Invalid email or password. Please try again.");
-//       }
-//     } catch (error) {
-//       console.error("Login error:", error);
-//       setErrorMessage("Login failed. Please try again.");
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className="flex h-screen items-start justify-center pt-20 bg-gray-100 p-4">
-//       <motion.div
-//         initial={{ opacity: 0, y: -20 }}
-//         animate={{ opacity: 1, y: 0 }}
-//         transition={{ duration: 0.5 }}
-//         className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl shadow-lg overflow-hidden"
-//       >
-//         {/* Left Side - Illustration */}
-//         <div className="hidden md:flex items-center justify-center bg-white p-8">
-//           <img
-//             src="src/assets/business.jpg"
-//             alt="Login Illustration"
-//             className="max-w-xs"
-//           />
-//         </div>
-
-//         {/* Right Side - Login Form */}
-//         <Card className="w-full p-6 border rounded-none">
-//           <CardContent className="space-y-4">
-//             <h2 className="text-2xl font-bold text-center">Welcome Back</h2>
-//             <p className="text-gray-500 text-center">
-//               Connect with professionals, investors & community
-//             </p>
-
-//             {/* Success and error messages */}
-//             {errorMessage && (
-//               <div className="p-2 bg-red-100 text-red-600 text-center rounded-md">
-//                 {errorMessage}
-//               </div>
-//             )}
-//             {successMessage && (
-//               <div className="p-2 bg-green-100 text-green-600 text-center rounded-md">
-//                 {successMessage}
-//               </div>
-//             )}
-
-//             <div className="space-y-1">
-//               <Input
-//                 type="email"
-//                 placeholder="Email Address"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//                 className={emailError ? "border-red-500" : ""}
-//               />
-//               {emailError && (
-//                 <p className="text-red-500 text-xs">{emailError}</p>
-//               )}
-//             </div>
-            
-//             <div className="space-y-1">
-//               <Input
-//                 type="password"
-//                 placeholder="Enter Password"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 className={passwordError ? "border-red-500" : ""}
-//               />
-//               {passwordError && (
-//                 <p className="text-red-500 text-xs">{passwordError}</p>
-//               )}
-//             </div>
-
-//             {/* Login Button with Loading Spinner */}
-//             <Button
-//               onClick={handleSubmit}
-//               className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-full"
-//               disabled={isLoading || !isFormValid}
-//             >
-//               {isLoading ? "Loading..." : "Log In"}
-//             </Button>
-
-//             <div className="text-center text-sm text-gray-500">
-//               <a href="#" className="hover:underline">
-//                 Forgot Password?
-//               </a>
-//             </div>
-
-//             <Separator />
-
-//             <Button
-//               className="w-full flex items-center justify-center gap-2 border"
-//               variant="outline"
-//             >
-//               <FaGoogle className="text-red-500" /> Login with Google
-//             </Button>
-
-//             <div className="text-center text-sm text-gray-500">
-//               Don't have an account?{" "}
-//               <Link to="/signup" className="text-blue-600 hover:underline">
-//                 Register
-//               </Link>
-//             </div>
-//           </CardContent>
-//         </Card>
-//       </motion.div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-
-// import { Card, CardContent } from "../ui/card";
-// import { Input } from "../ui/input";
-// import { Button } from "../ui/button";
-// import { Separator } from "../ui/separator";
-// import { FaGoogle } from "react-icons/fa";
-// import { useState, useEffect } from "react";
-// import { motion } from "framer-motion";
-// import { useNavigate } from "react-router-dom";
-// import { Link } from "react-router-dom";
-// import authService from "../../services/user/authService";
-
-// interface LoginCredentials {
-//   email: string;
-//   password: string;
-// }
-
-// export default function LoginPage() {
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [successMessage, setSuccessMessage] = useState<string>("");
-//   const [errorMessage, setErrorMessage] = useState<string>("");
-//   const [isLoading, setIsLoading] = useState<boolean>(false);
-//   const [isFormValid, setIsFormValid] = useState<boolean>(false);
-//   const [emailError, setEmailError] = useState<string>("");
-//   const [passwordError, setPasswordError] = useState<string>("");
-//   const navigate = useNavigate();
-
-//   // Validate form whenever email or password changes
-//   useEffect(() => {
-//     validateForm();
-//   }, [email, password]);
-
-//   // Validate the form fields
-//   const validateForm = () => {
-//     let valid = true;
-    
-//     // Reset error messages
-//     setEmailError("");
-//     setPasswordError("");
-    
-//     // Validate email
-//     if (!email.trim()) {
-//       valid = false;
-//     } else if (!validateEmail(email)) {
-//       setEmailError("Please enter a valid email address ending with .com");
-//       valid = false;
-//     }
-    
-//     // Validate password
-//     if (!password.trim()) {
-      
-//       valid = false;
-//     }
-    
-//     setIsFormValid(valid);
-//   };
-  
-//   // Email validation function
-//   const validateEmail = (email: string): boolean => {
-//     const regex = /^[^\s@]+@[^\s@]+\.[c][o][m]$/;
-//     return regex.test(email);
-//   };
-
-//   const handleSubmit = async () => {
-//     // Validate form before submission
-//     validateForm();
-//     if (!isFormValid) return;
-    
-//     setIsLoading(true);
-//     setErrorMessage("");
-//     setSuccessMessage("");
-
-//     try {
-//       const loginData: LoginCredentials = { email, password };
-//       const result = await authService.signIn(loginData);
-//       console.log(result);
-
-//       if (result) {
-//         setSuccessMessage("OTP Sent Successfully 🎉");
-//         // Optionally navigate after a short delay or based on your flow:
-//         setTimeout(() => navigate('/profession'), 2000);
-//       } else {
-//         setErrorMessage("Invalid email or password. Please try again.");
-//       }
-//     } catch (error) {
-//       console.error("Login error:", error);
-//       setErrorMessage("Login failed. Please try again.");
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className="flex h-screen items-start justify-center pt-20 bg-gray-100 p-4">
-//       <motion.div
-//         initial={{ opacity: 0, y: -20 }}
-//         animate={{ opacity: 1, y: 0 }}
-//         transition={{ duration: 0.5 }}
-//         className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl shadow-lg overflow-hidden"
-//       >
-//         {/* Left Side - Illustration */}
-//         <div className="hidden md:flex items-center justify-center bg-white p-8">
-//           <img
-//             src="src/assets/business.jpg"
-//             alt="Login Illustration"
-//             className="max-w-xs"
-//           />
-//         </div>
-
-//         {/* Right Side - Login Form */}
-//         <Card className="w-full p-6 border rounded-none">
-//           <CardContent className="space-y-4">
-//             <h2 className="text-2xl font-bold text-center">Welcome Back</h2>
-//             <p className="text-gray-500 text-center">
-//               Connect with professionals, investors & community
-//             </p>
-
-//             {/* Success and error messages */}
-//             {errorMessage && (
-//               <div className="p-2 bg-red-100 text-red-600 text-center rounded-md">
-//                 {errorMessage}
-//               </div>
-//             )}
-//             {successMessage && (
-//               <div className="p-2 bg-green-100 text-green-600 text-center rounded-md">
-//                 {successMessage}
-//               </div>
-//             )}
-
-//             <div className="space-y-1">
-//               <Input
-//                 type="email"
-//                 placeholder="Email Address"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//                 className={emailError ? "border-red-500" : ""}
-//               />
-//               {emailError && (
-//                 <p className="text-red-500 text-xs">{emailError}</p>
-//               )}
-//             </div>
-            
-//             <div className="space-y-1">
-//               <Input
-//                 type="password"
-//                 placeholder="Enter Password"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 className={passwordError ? "border-red-500" : ""}
-//               />
-//               {passwordError && (
-//                 <p className="text-red-500 text-xs">{passwordError}</p>
-//               )}
-//             </div>
-
-//             {/* Login Button with Loading Spinner */}
-//             <Button
-//               onClick={handleSubmit}
-//               className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-full"
-//               disabled={isLoading || !isFormValid}
-//             >
-//               {isLoading ? "Loading..." : "Log In"}
-//             </Button>
-
-//             <div className="text-center text-sm text-gray-500">
-//               <a href="#" className="hover:underline">
-//                 Forgot Password?
-//               </a>
-//             </div>
-
-//             <Separator />
-
-//             <Button
-//               className="w-full flex items-center justify-center gap-2 border"
-//               variant="outline"
-//             >
-//               <FaGoogle className="text-red-500" /> Login with Google
-//             </Button>
-
-//             <div className="text-center text-sm text-gray-500">
-//               Don't have an account?{" "}
-//               <Link to="/signup" className="text-blue-600 hover:underline">
-//                 Register
-//               </Link>
-//             </div>
-//           </CardContent>
-//         </Card>
-//       </motion.div>
-//     </div>
-//   );
-// }
 
 
 
@@ -405,6 +16,7 @@ import { Link } from "react-router-dom";
 import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 import authService from "../../services/user/authService";
 import { toast } from "react-hot-toast";
+import buinessIMg from "../../assets/business.jpg"
 
 
 interface LoginCredentials {
@@ -459,10 +71,9 @@ export default function LoginPage() {
   };
 
   const handleSubmit = async () => {
-    // Validate form before submission
     validateForm();
-    if (!isFormValid) return;
-    
+    if (!isFormValid) return; // Ensure `isFormValid` is a state
+
     setIsLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -470,51 +81,23 @@ export default function LoginPage() {
     try {
       const loginData: LoginCredentials = { email, password };
       const result = await authService.signIn(loginData);
-      console.log(result);
 
-      if (result) {
-        setTimeout(() => {
-          toast.success("Your login successfully completed!", {
-            duration: 3000,
-            position: "top-right",
-            style: {
-              background: "#333",
-              color: "#fff",
-              borderRadius: "8px",
-            },
-          });
-        }, 500);
-        navigate('/profession')
+      console.log(result, "XXXXXX");
+
+      if (result?.user?.profession) {
+        toast.success("Your login was successful!", { duration: 3000, position: "top-right" });
+        navigate('/mainpage/dashboard');
       } else {
-        setTimeout(() => {
-          toast.error("Your login successfully!", {
-            duration: 3000,
-            position: "top-right",
-            style: {
-              background: "#333",
-              color: "#fff",
-              borderRadius: "8px",
-            },
-          });
-        }, 500);
+        navigate('/profession');
       }
     } catch (error) {
       console.error("Login error:", error);
-      setTimeout(() => {
-        toast.error("Login failed. Please try again.", {
-          duration: 3000,
-          position: "top-right",
-          style: {
-            background: "#333",
-            color: "#fff",
-            borderRadius: "8px",
-          },
-        });
-      }, 500);
+      toast.error( "Login failed. Please try again.", { duration: 3000, position: "top-right" });
     } finally {
       setIsLoading(false);
     }
-  };
+};
+
 
   // Handle Google login success
   const handleGoogleLoginSuccess = async (credentialResponse: CredentialResponse) => {
@@ -551,7 +134,7 @@ export default function LoginPage() {
             },
           });
         }, 500);
-        setTimeout(() => navigate('/profession'), 2000)
+        setTimeout(() => navigate('/mainpage/dashboard'), 2000)
       }
     } catch (error) {
       console.error("Google login verification error:", error);
@@ -585,7 +168,7 @@ export default function LoginPage() {
         {/* Left Side - Illustration */}
         <div className="hidden md:flex items-center justify-center bg-white p-8">
           <img
-            src="src/assets/business.jpg"
+            src={buinessIMg}
             alt="Login Illustration"
             className="max-w-xs"
           />
@@ -647,7 +230,7 @@ export default function LoginPage() {
             </Button>
 
             <div className="text-center text-sm text-gray-500">
-              <a href="#" className="hover:underline">
+              <a href="/forgot-password" className="hover:underline">
                 Forgot Password?
               </a>
             </div>

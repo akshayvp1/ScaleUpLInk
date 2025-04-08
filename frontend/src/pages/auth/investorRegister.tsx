@@ -1,6 +1,6 @@
 import React from 'react'
 import Navbar from '../../components/navbar/navbar'
-import InvestorRegister from '../../components/basics/investorRegister'
+import InvestorRegister from '../../components/investor/investorRegister'
 function investorRegister() {
   return (
     <>

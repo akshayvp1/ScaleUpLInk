@@ -1,4 +1,5 @@
 import React from "react";
+import logoNavabar from "../../assets/logo6.png"
 
 const Navbar = () => {
   return (
@@ -7,7 +8,7 @@ const Navbar = () => {
       <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
         <a href="/" className="block">
           <img
-            src="src/assets/logo6.png"
+            src={logoNavabar}
             alt="Company Logo"
             className="h-40 w-auto"
           />  

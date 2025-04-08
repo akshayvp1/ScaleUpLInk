@@ -375,6 +375,8 @@ import { motion } from "framer-motion";
 import authService from "../../services/user/authService";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import buinessIMg from "../../assets/business.jpg"
+
 
 interface RegisterCredentials {
   name: string;
@@ -466,7 +468,7 @@ export default function RegisterPage() {
         className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl shadow-lg overflow-hidden"
       >
         <div className="hidden md:flex items-center justify-center bg-white p-8">
-          <img src="src/assets/business.jpg" alt="Register Illustration" className="max-w-xs" />
+          <img src={buinessIMg} alt="Register Illustration" className="max-w-xs" />
         </div>
         <Card className="w-full p-6 border rounded-none">
           <CardContent className="space-y-4">

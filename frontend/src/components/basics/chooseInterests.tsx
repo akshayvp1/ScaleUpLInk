@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "../../components/ui/button";
-// import { useDispatch, useSelector } from "react-redux";
-// import { RootState } from "../../redux/app/store";
-// import { setTempUser } from "../../redux/features/auth/tempSlice";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,7 +9,8 @@ import {
   FaChartPie, FaBuilding, FaHeadset, FaClipboardList, FaLightbulb
 } from "react-icons/fa";
 import authService from "../../services/user/authService";
-import {store} from '../../redux/app/store'
+import { store } from '../../redux/app/store';
+import buinessIMg from "../../assets/business.jpg";
 
 interface ProfessionalInterestOption {
   id: string;
@@ -23,6 +21,7 @@ interface ProfessionalInterestOption {
 export default function ProfessionalInterestsSelectionPage() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const professionalInterests: ProfessionalInterestOption[] = [
     { id: "data_analytics", label: "Data Analytics", icon: <FaChartLine size={20} /> },
@@ -56,22 +55,30 @@ export default function ProfessionalInterestsSelectionPage() {
       toast.error("Please select at least one professional interest");
       return;
     }
+
     const currentTempUser = store.getState().tempUser.tempUser;
+    
+    if (!currentTempUser?.email) {
+      toast.error("User email not found. Please log in again.");
+      return;
+    }
+
     const data = {
-      email: currentTempUser?.email,
-      profession: currentTempUser?.profession,
+      email: currentTempUser.email,
+      profession: currentTempUser.profession,
       interest: selectedInterests 
     };
-    console.log(data)
+
     try {
-
+      setLoading(true);
       await authService.addInterests(data);
-
       toast.success("Professional interests saved successfully!");
-      navigate("/next-step"); // Adjust the navigation path as needed
+      navigate("/mainpage/dashboard"); // Adjust the navigation path as needed
     } catch (error) {
       console.error("Error saving interests:", error);
       toast.error("Failed to save professional interests");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,7 +93,7 @@ export default function ProfessionalInterestsSelectionPage() {
         {/* Left Side - Illustration */}
         <div className="hidden md:flex items-center justify-center bg-white p-8">
           <img
-            src="src//assets/business.jpg"
+            src={buinessIMg}
             alt="Professional Collaboration"
             className="max-w-xs"
           />
@@ -119,10 +126,10 @@ export default function ProfessionalInterestsSelectionPage() {
           <div className="mt-8 flex justify-center">
             <Button
               className="px-10 bg-orange-500 hover:bg-orange-600 text-white rounded-full"
-              disabled={selectedInterests.length === 0} // Fixed this condition
+              disabled={selectedInterests.length === 0 || loading}
               onClick={handleContinue}
             >
-              Continue
+              {loading ? "Saving..." : "Continue"}
             </Button>
           </div>
         </div>

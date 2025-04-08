@@ -6,7 +6,7 @@ import redisClient from "../../config/redisConfig";
 import { sendOTPEmail } from "../../utils/emailService";
 import { inject, injectable } from "tsyringe";
 import UserRepository from "../../repositories/entrepreneur/userRepository";
-import { generateTokens,ITokenPayload } from "../../utils/jwt";
+import { generateToken,ITokenPayload } from "../../utils/jwt";
 import { OAuth2Client } from "google-auth-library";
 import { googleSignInResult } from "../../services/entrepreneur/interface/IAuthService";
 
@@ -75,7 +75,7 @@ class AuthService implements IAuthService {
         role: user.role,
       };
   
-      const { accessToken, refreshToken } = generateTokens(payload);
+      const { accessToken, refreshToken } = generateToken(payload);
   
       return {
         isMatch: true,
@@ -116,7 +116,7 @@ class AuthService implements IAuthService {
         };
     
 
-        const { accessToken, refreshToken } = generateTokens(payload);
+        const { accessToken, refreshToken } = generateToken(payload);
 
         return { user, accessToken, refreshToken, partialUser };
       }
@@ -166,61 +166,7 @@ class AuthService implements IAuthService {
     }
   }
 
-  async completeProfile(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
-    try {
-        const { userData } = input;
-        if (!userData) {
-            throw new Error("Invalid input: userData is missing");
-        }
-        console.log("Received User Data:", userData);
 
-        const googleDataString = await redisClient.get(`google:${userData.email}`);
-        
-        const googleData = googleDataString ? JSON.parse(googleDataString) : null;
-
-        console.log("Google Data:", googleData);
-
-        const updatedUserData: Partial<IUser> = {
-            ...googleData,   
-            ...userData,     
-            isBlocked: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-
-        console.log("Updated User Data:", updatedUserData);
-
-        if (!updatedUserData.email || !updatedUserData.name) {
-            console.error("Validation Error: Missing required fields", updatedUserData);
-            throw new Error("Email and Name are required to complete profile.");
-        }
-        const createdUser = await this.userRepository.createUser(updatedUserData as IUser);
-        if (!createdUser) {
-            throw new Error("Failed to create user");
-        }
-
-        console.log("Created User:", createdUser);
-
-        // Generate tokens
-        const jwtPayload: ITokenPayload = {
-            id: createdUser._id!.toString(),
-            email: createdUser.email,
-            role: createdUser.role,
-        };
-
-        const { accessToken, refreshToken } = generateTokens(jwtPayload);
-
-        if (googleData) {
-            await redisClient.del(`google:${userData.email}`);
-        }
-
-        return { user: createdUser, accessToken, refreshToken };
-
-    } catch (error) {
-        console.error("Complete Profile Error:", error);
-        throw new Error(`Failed to complete profile: ${(error as Error).message}`);
-    }
-}
 
 
 async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
@@ -265,7 +211,7 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
           role: createdUser.role,
       };
 
-      const { accessToken, refreshToken } = generateTokens(jwtPayload);
+      const { accessToken, refreshToken } = generateToken(jwtPayload);
 
       if (googleData) {
           await redisClient.del(`google:${userData.email}`);
@@ -279,7 +225,153 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
   }
 }
 
+async checkActiveStatus(id:string):Promise<boolean>{
+  try{
+    const user = await this.userRepository.findUserById(id)
+    if(!user){
+      throw new Error("error")
+    }
+    return user.isActive
+  }catch(error){
+    throw error
+  }
+}
+async addInterests(
+  data: {
+    email?: string;
+    profession?: string;
+    interest?: string[];
+  },
+  user?: ITokenPayload
+): Promise<IUser | null> {
+  console.log("i amd addinterest service")
+
+  const email = data.email || user?.email;
+
+  if (!email) {
+    throw new Error('Email is required');
+  }
+
+  const interests = data.interest?.filter(
+    interest => interest && interest.trim() !== ''
+  );
+
+
+  const existingUser = await this.userRepository.findUserByEmail(email);
+  if (!existingUser) {
+    throw new Error('User not found');
+  }
+
+  // Add interests
+  return await this.userRepository.addInterests(
+    email, 
+    interests || [], 
+    data.profession
+  );
+}
+async updateData(
+  data: {
+    name?: string;
+    contactNumber?: string;
+    profileImage?: string;
+    bio?: string;
+    email?: string;
+  },
+  user?: ITokenPayload
+): Promise<IUser | null> {
+  console.log("Updating user data in service");
+
+  const email = data.email || user?.email;
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const existingUser = await this.userRepository.findUserByEmail(email);
+  if (!existingUser) {
+    throw new Error("User not found");
+  }
+
+  return await this.userRepository.updateData({ ...data, email });
+}
+async getUserById(id: string): Promise<IUser | null> {
+  return await this.userRepository.findUserById(id);
+}
+async getUser(userId: string): Promise<IUser | null> {
+  try {
+    return await this.userRepository.findUserById(userId);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null; 
+  }
+}
+async otpForgotPassword(email: string): Promise<boolean> {
+  try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+          console.log("User not found");
+          return false;
+      }
+
+      const newOtp = randomInt(100000, 999999).toString();
+      console.log(newOtp, "NewOtp");
+
+      const parsedData = { otp: newOtp };
+
+      await redisClient.set(email, JSON.stringify(parsedData), { EX: 300 });
+      await sendOTPEmail(email, newOtp); 
+
+      return true;
+  } catch (error) {
+      console.error("Error in otpForgotPassword:", error);
+      return false;
+  }
+ 
+}
+async verifyForgotOtp(email: string, otp: string): Promise<boolean> {
+  try {
+      const storedData = await redisClient.get(email);
+      if (!storedData) {
+          console.error("OTP not found or expired.");
+          return false; 
+      }
+
+      console.log(storedData, "Stored OTP Data");
+      const tempData = JSON.parse(storedData);
+
+      if (tempData.otp !== otp) {
+          console.error("Invalid OTP.");
+          return false; 
+      }
+
+      return true; 
+  } catch (error) {
+      console.error("Error in verifyForgotOtp:", error);
+      return false; 
+  }
+}
+
+async changePassword(email: string, newPassword: string): Promise<boolean> {
+  try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+          throw new Error("User not found");
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      const updatedUser = await this.userRepository.updatePassword(email, hashedPassword);
+      
+      return !!updatedUser;
+  } catch (error) {
+      console.error("Error in changePassword:", error);
+      return false;
+  }
+}
+
 
 }
+
+
+
+
 
 export default AuthService;
