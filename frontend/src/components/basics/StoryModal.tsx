@@ -134,7 +134,7 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
           {!previewUrl ? (
             <label className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer">
               <Upload className="h-12 w-12 text-gray-400" />
-              <span className="mt-2 text-sm text-gray-600">Upload image or video</span>
+              <span className="mt-2 text-sm text-gray-600">Upload image</span>
               <Input
                 type="file"
                 accept="image/*,video/*"

@@ -43,18 +43,19 @@ export interface IUser extends Document {
   plan: {
     type: "free" | "premium";
   };
-  isBlocked: boolean;
+
   profileImage?: string;
   bio?: string;
   isPremium: boolean;
   walletId?: Types.ObjectId;
+  eventId?: Types.ObjectId;
   isActive: boolean;
   createdAt: Date;
   otp: string | null;
   otpExpiresAt: Date | null;
   name: string;
   updatedAt: Date;
-  role: "entrepreneur" | "investor";
+  role: "entrepreneur" | "investor"|"admin";
   // Add these as top-level optional fields
   companyName?: string;
   companyFounded?: string | number;

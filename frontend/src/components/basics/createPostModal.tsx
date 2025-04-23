@@ -108,7 +108,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "ad-upload"); // Your Cloudinary upload preset
-
+    formData.append("folder", "scaleuplink/posts");
     const endpoint = type === 'image' 
       ? "https://api.cloudinary.com/v1_1/dedrcfbxf/image/upload"
       : "https://api.cloudinary.com/v1_1/dedrcfbxf/video/upload";

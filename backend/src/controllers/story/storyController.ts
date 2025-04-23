@@ -10,7 +10,7 @@ class StoryController implements IStoryController {
   async createStory(req: Request, res: Response): Promise<void> {
     try {
       const { media, caption } = req.body;
-      const authUserId = req.user?.id; // User ID from JWT middleware
+      const authUserId = req.user?.id; 
 
       if (!authUserId) {
         res.status(401).json({ error: 'Unauthorized' });

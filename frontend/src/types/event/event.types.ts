@@ -8,26 +8,25 @@ export interface Ticket {
   }
   
   // Full Event model as stored in database
-  export interface Event {
-    id?: string; // MongoDB _id when fetched from backend
-    user_id?: string;
-    eventTitle: string;
-    eventDescription: string;
-    eventType: 'Conference' | 'Concert' | 'Workshop' | 'Exhibition' | 'Meetup' | 'Party';
+  interface Event {
+    id: string;
+    mainBanner: string;
+    eventTitle: string; // Use backend field name
+    eventType: string;
+    userName: string; // Not provided by backend
+    userImage?: string; // Not provided by backend
     startDate: Date;
     startTime: string;
-    endingDate: Date;
-    endingTime?: string;
-    eventVisibility: 'Public' | 'Private';
+    endingDate: Date; // Use backend field name
+    endingTime: string; // Use backend field name
+    eventVisibility: 'Public' | 'Private'; // Use backend field name
     venueName: string;
-    venueAddress?: string;
     city: string;
+    venueAddress: string;
     tickets: Ticket[];
     ageRestriction: boolean;
-    mainBanner: string;
-    promotionalImage?: string;
-    createdAt?: string;
-    updatedAt?: string;
+    isPremium: boolean; // Not in backend
+    eventStatus: 'pending' | 'approve' | 'cancelled' | 'completed'; // Use backend field name
   }
   
   // Form data structure for creating events

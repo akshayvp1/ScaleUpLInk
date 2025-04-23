@@ -47,6 +47,9 @@ async getUsersPosts(userPartial: IUser): Promise<IPost[]> {
 async addLike(postId: string, userId: string) {
     return await this.postRepository.addLike(postId, userId);
 }
+async unLike(postId: string, userId: string) {
+    return await this.postRepository.unLike(postId, userId);
+}
 async addComment(postId: string, userId: string, commentText: string): Promise<IPost | null> {
     return this.postRepository.addComment(postId, userId, commentText);
 }
@@ -54,6 +57,15 @@ async followUser(followerId: string, userIdToFollow: string): Promise<{ message:
     try {
         console.log("Service executing...");
         return await this.postRepository.followUser(followerId, userIdToFollow);
+    } catch (error) {
+        console.error("Error in PostService.followUser:", error);
+        throw error;
+    }
+}
+async UnFollowUser(followerId: string, userIdToUnFollow: string): Promise<{ message: string }> {
+    try {
+        console.log("Service executing...");
+        return await this.postRepository.UnFollowUser(followerId, userIdToUnFollow);
     } catch (error) {
         console.error("Error in PostService.followUser:", error);
         throw error;

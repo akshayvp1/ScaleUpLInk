@@ -183,7 +183,7 @@ class PostController implements IPostController {
             const user: Partial<IUser> = {
                 _id: new mongoose.Types.ObjectId(tokenUser.id),
                 email: tokenUser.email,
-                role: tokenUser.role
+                role: tokenUser.role 
             };
                console.log("bbbbbbb")
             const posts = await this.postService.getUsersPosts(user as IUser);
@@ -229,6 +229,24 @@ class PostController implements IPostController {
             res.status(400).json({ message: error instanceof Error ? error.message : "An error occurred" });
         }
     }
+    async unLike(req: Request & { user?: { id: string } }, res: Response): Promise<void> {
+        try {
+            const { postId } = req.params;
+            const userId = req.user?.id;
+    
+            if (!userId) {
+                res.status(401).json({ message: "User not authenticated" });
+                return;
+            }
+    
+            const likedPost = await this.postService.unLike(postId as string, userId);
+    
+            res.status(200).json({ message: "Post unliked successfully", post: likedPost });
+        } catch (error) {
+            console.error("Error unliking post:", error);
+            res.status(400).json({ message: error instanceof Error ? error.message : "An error occurred" });
+        }
+    }
     async addComment(req: Request & { user?: { id: string } }, res: Response): Promise<void> {
         try {
             const  {postId}  = req.params;
@@ -249,14 +267,9 @@ class PostController implements IPostController {
 }
 async followUser(req: Request & { user?: ITokenPayload }, res: Response): Promise<void> {
     try {
-        console.log("Controller executing...");
-
+       
         const { userId: userIdToFollow } = req.body; 
         const loggedInUserId = req.user?.id; 
-
-        console.log(userIdToFollow, "userIdToFollow");
-        console.log(loggedInUserId, "loggedInUserId");
-
         if (!loggedInUserId) {
             res.status(401).json({ message: "User not authenticated" });
             return;
@@ -267,12 +280,38 @@ async followUser(req: Request & { user?: ITokenPayload }, res: Response): Promis
             return;
         }
 
-        // Call the service to handle the follow action
         const result = await this.postService.followUser(loggedInUserId, userIdToFollow);
         console.log(result, "Follow action result");
 
         res.status(200).json({
             message: "User followed successfully",
+            data: result
+        });
+    } catch (error) {
+        console.error("Error in followUser:", error);
+        res.status(500).json({ message: "An error occurred while following the user" });
+    }
+}
+async unFollowUser(req: Request & { user?: ITokenPayload }, res: Response): Promise<void> {
+    try {
+       
+        const { userId: userIdToUnFollow } = req.body; 
+        const loggedInUserId = req.user?.id; 
+        if (!loggedInUserId) {
+            res.status(401).json({ message: "User not authenticated" });
+            return;
+        }
+
+        if (!userIdToUnFollow || loggedInUserId === userIdToUnFollow) {
+            res.status(400).json({ message: "Invalid user to follow" });
+            return;
+        }
+
+        const result = await this.postService.UnFollowUser(loggedInUserId, userIdToUnFollow);
+        console.log(result, "UnFollow action result");
+
+        res.status(200).json({
+            message: "User Unfollowed successfully",
             data: result
         });
     } catch (error) {

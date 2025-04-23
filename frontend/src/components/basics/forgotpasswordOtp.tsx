@@ -65,10 +65,7 @@ export default function ResetPasswordOTPVerification() {
   };
 
   const handleResend = async () => {
-    if (!tempUser?.email) {
-      setErrorMessage("User email not found. Please try again.");
-      return;
-    }
+    
 
     setIsResending(true);
     setErrorMessage(null);
@@ -76,10 +73,10 @@ export default function ResetPasswordOTPVerification() {
     
     try {
       // We need to just send the email for OTP resend
-      const email = tempUser.email;
+      const email = localStorage.getItem("email")
       
       // Send only the email for OTP resend
-      await authService.resendOtp(email, role);
+      await authService.resendOtp(email as string, role);
       
       setSuccessMessage("OTP resent successfully!");
       setTimeLeft(30);
@@ -95,10 +92,7 @@ export default function ResetPasswordOTPVerification() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!tempUser?.email) {
-        setErrorMessage("User email not found. Please try again.");
-        return; // Stop execution if email is missing
-    }
+    
 
     if (otp.length !== 6 || isNaN(Number(otp))) {
         setErrorMessage("Please enter a valid 6-digit OTP.");
@@ -110,8 +104,11 @@ export default function ResetPasswordOTPVerification() {
     setSuccessMessage(null);
 
     try {
+      let email = localStorage.getItem("email");
+      console.log(email,"LLLLLLL")
         // Call API to verify OTP
-        const response = await authService.verifyforgotOtp(tempUser.email, otp);
+        const response = await authService.verifyforgotOtp(email as string, otp);
+        console.log(response,"ppppppppdddd")
 
         if (!response || !response.success) {
             throw new Error("Invalid OTP");

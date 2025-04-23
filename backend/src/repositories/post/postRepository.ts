@@ -25,18 +25,7 @@ class PostRepository implements IPostRepository {
             throw error;
         }
     }
-    // async getPost(user: IUser): Promise<IPost[]> {
-    //     try {
-    //         const posts = await this.postModel
-    //             .find({ userid: user._id })
-    //             .sort({ createdAt: 1 }) 
-    //             .exec();
-    //         return posts;
-    //     } catch (error) {
-    //         console.error('Error in PostRepository.getPost:', error);
-    //         throw error;
-    //     }
-    // }
+    
     async getPost(user: IUser): Promise<IPost[]> {
         try {
             const posts = await this.postModel
@@ -58,7 +47,6 @@ class PostRepository implements IPostRepository {
         try {
             console.log(`🔍 Fetching posts for user: ${user._id}`);
     
-            // Fetch user interests
             const completeUser = await UserModel.findById(user._id)
                 .select("interests")
                 .lean<{ interests?: string[] }>();
@@ -107,6 +95,22 @@ class PostRepository implements IPostRepository {
     
         return post;
     }
+    
+async unLike(postId: string, userId: string) {
+    const post = await this.postModel.findById(new mongoose.Types.ObjectId(postId));
+  
+    if (!post) return null;
+  
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+  
+    if (post.likes.some((id) => id.equals(userObjectId))) {
+      post.likes = post.likes.filter((id) => !id.equals(userObjectId));
+      await post.save();
+    }
+  
+    return post;
+  }
+      
     async addComment(postId: string, userId: string, commentText: string): Promise<IPost | null> {
         const post = await Post.findById(postId);
     
@@ -158,6 +162,41 @@ class PostRepository implements IPostRepository {
             throw error;
         }
 }
+async UnFollowUser(followerId: string, userIdToUnFollow: string): Promise<{ message: string }> {
+    try {
+        console.log("Executing UnFollowUser...");
+
+        const followerObjectId = new mongoose.Types.ObjectId(followerId);
+        const userToUnFollowObjectId = new mongoose.Types.ObjectId(userIdToUnFollow);
+
+        // Ensure both users exist
+        const follower = await UserModel.findById(followerObjectId);
+        const userToUnFollow = await UserModel.findById(userToUnFollowObjectId);
+
+        if (!follower || !userToUnFollow) {
+            return { message: "One or both users not found" };
+        }
+
+        if (!follower.following.some(id => id.equals(userToUnFollowObjectId))) {
+            return { message: "You are not following this user" };
+        }
+
+        // Remove from following and followers
+        await UserModel.findByIdAndUpdate(followerObjectId, {
+            $pull: { following: userToUnFollowObjectId }
+        });
+
+        await UserModel.findByIdAndUpdate(userToUnFollowObjectId, {
+            $pull: { followers: followerObjectId }
+        });
+
+        return { message: "Unfollowed successfully" };
+    } catch (error) {
+        console.error("Error in UnFollowUser:", error);
+        throw error;
+    }
+}
+
 }
 
 

@@ -105,16 +105,13 @@ export default function ResetPassword() {
       }));
       return;
     }
-    
-    if (!tempUser?.email) {
-      setErrorMessage("User email not found. Please try again.");
-      return;
-    }
+   
     
     setIsSubmitting(true);
     
     try {
-      await authService.changePassword(tempUser.email, newPassword);
+      let email = localStorage.getItem("email");
+      await authService.changePassword(email as string, newPassword);
       setSuccessMessage("Password reset successfully! Redirecting to login...");
       setTimeout(() => {
         navigate("/signin");

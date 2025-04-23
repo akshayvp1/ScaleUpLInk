@@ -89,7 +89,7 @@ class InvestorRepository implements IInvestorRepository {
                             companyRegistration: userData.investorDetails.companyRegistration
                                 ? Number(userData.investorDetails.companyRegistration)
                                 : undefined,
-                            // Include any other investorDetails fields from your schema
+                            
                         }
                         : undefined,
             });

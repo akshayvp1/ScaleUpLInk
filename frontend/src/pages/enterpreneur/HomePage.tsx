@@ -2,7 +2,7 @@ import React from 'react'
 // import AgeCard from '../../components/entrepreneur/ageCard'
 import Stories from '../../components/basics/stories'
 import Post from '../../components/basics/post'
-
+import { ModeToggle } from '../../components/mode-toggle';
 function AgeCardPage() {
   // Sample users array
   const users = [
@@ -12,6 +12,7 @@ function AgeCardPage() {
 
   return (
     <div>
+      <ModeToggle/>
       <Stories users={users} />
       {/* <AgeCard /> */}
       <Post/>

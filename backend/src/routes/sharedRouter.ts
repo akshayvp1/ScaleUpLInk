@@ -119,6 +119,9 @@ shared.get("/get-posts", authenticate, postController.getUserPosts.bind(postCont
 shared.post("/posts/:postId/like", authenticate, postController.addLike.bind(postController));
 shared.post("/posts/:postId/comment", authenticate, postController.addComment.bind(postController));
 shared.post("/followUser", authenticate, postController.followUser.bind(postController));
+shared.post("/posts/:postId/unlike", authenticate, postController.unLike.bind(postController));
+shared.post("/unfollowUser", authenticate, postController.unFollowUser.bind(postController));
+
 
 // ================== Story Routes ==================
 shared.post("/stories", authenticate, storyController.createStory.bind(storyController));
@@ -130,5 +133,5 @@ shared.get("/stories/:currentUserId/followed", authenticate, storyController.get
 //========== Event Routes ===========================
 shared.post('/event-creation',authenticate,eventController.createEvent.bind(eventController))
 shared.get('/get-events',authenticate,eventController.getAllEvents.bind(eventController))
-shared.get('/events/:id',authenticate,eventController.getEventsById.bind(eventController))
+shared.get('/events/:id',authenticate,eventController.getEventById.bind(eventController))
 export default shared;

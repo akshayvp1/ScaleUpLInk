@@ -1,8 +1,4 @@
 
-
-
-
-
 // import React, { useState, useEffect } from 'react';
 // import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 // import { 
@@ -13,7 +9,11 @@
 // import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 // import { cn } from '../../lib/utils';
 // import { useIsMobile } from '../../hooks/use-mobile';
-// import CreatePostModal from '../../components/basics/createPostModal'; // Adjust the import path
+// import CreatePostModal from '../../components/basics/createPostModal';
+// import authService from '../../services/user/authService'; // Add authService import
+// import { toast } from "react-hot-toast";
+// import { store } from '../../redux/app/store';
+
 
 // type NavItem = {
 //   icon: React.ElementType;
@@ -26,7 +26,7 @@
 // interface DashboardLayoutProps {
 //   children?: React.ReactNode;
 // }
-
+// const user = store.getState().tempUser.tempUser
 // const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 //   const location = useLocation();
 //   const navigate = useNavigate();
@@ -34,25 +34,40 @@
 //   const [mounted, setMounted] = useState(false);
 //   const isMobile = useIsMobile();
 //   const [showCreatePost, setShowCreatePost] = useState(false);
+//   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
 //   useEffect(() => {
 //     setMounted(true);
 //   }, []);
 
 //   const handleCreateClick = () => {
-//     setShowCreatePost(true); // Show the create post content
+//     setShowCreatePost(true);
 //   };
 
 //   const handleCloseCreatePost = () => {
-//     setShowCreatePost(false); // Hide the create post content
+//     setShowCreatePost(false);
 //   };
 
 //   const handleNavClick = (item: NavItem) => {
 //     if (item.label !== 'Create') {
-//       setShowCreatePost(false); // Reset Create state when clicking other items
-//       navigate(item.path); // Navigate to the clicked item's path
+//       setShowCreatePost(false);
+//       navigate(item.path);
 //     } else if (item.onClick) {
-//       item.onClick(); // Trigger custom onClick for Create
+//       item.onClick();
+//     }
+//   };
+
+//   const handleLogout = async () => {
+//     setIsLoggingOut(true);
+//     try {
+//       await authService.logout();
+//       localStorage.clear(); 
+//       navigate('/signin'); 
+//       toast.success("successfully signout!", { duration: 3000, position: "top-right"});
+//     } catch (error) {
+//       console.error('Logout failed:', error);
+//     } finally {
+//       setIsLoggingOut(false);
 //     }
 //   };
 
@@ -114,7 +129,6 @@
 //       <nav className="flex-grow py-6 overflow-y-auto scrollbar-none">
 //         <div className="space-y-1.5 px-3">
 //           {navigationItems.map((item, index) => {
-//             // Only one item should be active: "Create" if showCreatePost is true, otherwise the current route
 //             const isActive = showCreatePost ? item.label === 'Create' : location.pathname === item.path;
 //             return (
 //               <Link 
@@ -122,7 +136,7 @@
 //                 key={item.label}
 //                 className="block"
 //                 onClick={(e) => {
-//                   e.preventDefault(); // Prevent default navigation to handle it manually
+//                   e.preventDefault();
 //                   handleNavClick(item);
 //                 }}
 //                 style={{ 
@@ -182,7 +196,7 @@
 //             "border-2 border-white shadow-sm transition-transform duration-200 hover:scale-105",
 //             isCompact && !isMobile ? "h-10 w-10" : "h-10 w-10 mr-3"
 //           )}>
-//             <AvatarImage src="https://images.unsplash.com/photo-1618160702438-9b02ab6515c9" alt="User Avatar" />
+//             <AvatarImage src={user?.profileImage} alt="User Avatar" />
 //             <AvatarFallback className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">JD</AvatarFallback>
 //           </Avatar>
 //           <div 
@@ -191,8 +205,8 @@
 //               isCompact && !isMobile ? "opacity-0 w-0" : "opacity-100"
 //             )}
 //           >
-//             <p className="font-semibold text-slate-800">John Doe</p>
-//             <p className="text-xs text-slate-500">Founder</p>
+//             <p className="font-semibold text-slate-800">{user?.name}</p>
+//             <p className="text-xs text-slate-500">{user?.role}</p>
 //           </div>
 //         </div>
         
@@ -203,6 +217,8 @@
 //             "w-full mt-3 text-slate-600 hover:text-orange-500 hover:bg-slate-100 flex items-center rounded-xl transition-all duration-200",
 //             isCompact && !isMobile ? "p-2 h-10" : "justify-start"
 //           )}
+//           onClick={handleLogout}
+//           disabled={isLoggingOut}
 //         >
 //           <LogOut className={cn(
 //             "h-5 w-5 transition-transform duration-200 hover:scale-110",
@@ -214,7 +230,7 @@
 //               isCompact && !isMobile ? "hidden" : "block"
 //             )}
 //           >
-//             Logout
+//             {isLoggingOut ? 'Logging out...' : 'Logout'}
 //           </span>
 //         </Button>
 //       </div>
@@ -243,7 +259,7 @@
 //           isMobile ? "pb-20 pt-16" : "p-6"
 //         )}
 //       >
-//         <Outlet /> {/* Always render the Outlet */}
+//         <Outlet />
 //         {showCreatePost && (
 //           <div className="absolute inset-0 flex items-center justify-center z-10">
 //             <CreatePostModal onClose={handleCloseCreatePost} />
@@ -272,7 +288,6 @@
 //         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] h-16 z-50">
 //           <div className="grid grid-cols-5 h-full">
 //             {mobileNavItems.map((item) => {
-//               // Only one item should be active: "Create" if showCreatePost is true, otherwise the current route
 //               const isActive = showCreatePost ? item.label === 'Create' : location.pathname === item.path;
 //               return (
 //                 <button
@@ -307,7 +322,6 @@
 
 
 
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -319,8 +333,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { cn } from '../../lib/utils';
 import { useIsMobile } from '../../hooks/use-mobile';
 import CreatePostModal from '../../components/basics/createPostModal';
-import authService from '../../services/user/authService'; // Add authService import
+import authService from '../../services/user/authService';
 import { toast } from "react-hot-toast";
+import { store } from '../../redux/app/store';
 
 type NavItem = {
   icon: React.ElementType;
@@ -333,6 +348,8 @@ type NavItem = {
 interface DashboardLayoutProps {
   children?: React.ReactNode;
 }
+
+const user = store.getState().tempUser.tempUser;
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -370,7 +387,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       await authService.logout();
       localStorage.clear(); 
       navigate('/signin'); 
-      toast.success("successfully signout!", { duration: 3000, position: "top-right"});
+      toast.success("Successfully signed out!", { duration: 3000, position: "top-right" });
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -402,7 +419,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const SidebarContent = () => (
     <>
       {/* Header */}
-      <div className="flex justify-between items-center p-6 border-b border-slate-100">
+      <div className={cn(
+        "flex justify-between items-center p-6 border-b",
+        "bg-background border-border"
+      )}>
         <div 
           className={cn(
             "flex items-center transition-all duration-300 ease-in-out",
@@ -422,7 +442,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             variant="ghost"
             size="icon"
             onClick={() => setIsCompact(!isCompact)}
-            className="text-slate-600 hover:text-orange-500 hover:bg-slate-50 rounded-full transition-all duration-200"
+            className="text-muted-foreground hover:text-orange-500 hover:bg-accent rounded-full transition-all duration-200"
           >
             {isCompact ? 
               <ChevronsRight className="h-5 w-5 transition-transform duration-300 ease-in-out transform hover:scale-110" /> : 
@@ -458,7 +478,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     "flex items-center p-3 rounded-xl transition-all duration-200 group",
                     isActive 
                       ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md" 
-                      : "text-slate-600 hover:bg-slate-100",
+                      : "text-muted-foreground hover:bg-accent",
                     isCompact && !isMobile && "justify-center"
                   )}
                 >
@@ -490,7 +510,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* User Profile and Logout */}
       <div className={cn(
-        "p-4 mx-3 mb-4 rounded-xl bg-slate-50 border border-slate-100 transition-all duration-300",
+        "p-4 mx-3 mb-4 rounded-xl border transition-all duration-300",
+        "bg-background/50 border-border",
         isCompact && !isMobile ? "px-2" : ""
       )}>
         <div 
@@ -500,10 +521,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           )}
         >
           <Avatar className={cn(
-            "border-2 border-white shadow-sm transition-transform duration-200 hover:scale-105",
+            "border-2 border-border shadow-sm transition-transform duration-200 hover:scale-105",
             isCompact && !isMobile ? "h-10 w-10" : "h-10 w-10 mr-3"
           )}>
-            <AvatarImage src="https://images.unsplash.com/photo-1618160702438-9b02ab6515c9" alt="User Avatar" />
+            <AvatarImage src={user?.profileImage} alt="User Avatar" />
             <AvatarFallback className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">JD</AvatarFallback>
           </Avatar>
           <div 
@@ -512,8 +533,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               isCompact && !isMobile ? "opacity-0 w-0" : "opacity-100"
             )}
           >
-            <p className="font-semibold text-slate-800">John Doe</p>
-            <p className="text-xs text-slate-500">Founder</p>
+            <p className="font-semibold text-foreground">{user?.name}</p>
+            <p className="text-xs text-muted-foreground">{user?.role}</p>
           </div>
         </div>
         
@@ -521,7 +542,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           variant="ghost" 
           size={isCompact && !isMobile ? "icon" : "default"}
           className={cn(
-            "w-full mt-3 text-slate-600 hover:text-orange-500 hover:bg-slate-100 flex items-center rounded-xl transition-all duration-200",
+            "w-full mt-3 text-muted-foreground hover:text-orange-500 hover:bg-accent flex items-center rounded-xl transition-all duration-200",
             isCompact && !isMobile ? "p-2 h-10" : "justify-start"
           )}
           onClick={handleLogout}
@@ -545,12 +566,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className={cn("flex h-screen overflow-hidden bg-background")}>
       {/* Desktop Sidebar */}
       {!isMobile && (
         <div 
           className={cn(
-            "bg-white border-r border-slate-100 shadow-[0_0_15px_rgba(0,0,0,0.05)] flex flex-col transition-all duration-300 ease-in-out z-20",
+            "bg-background border-r border-border shadow-[0_0_15px_rgba(0,0,0,0.05)] flex flex-col transition-all duration-300 ease-in-out z-20",
             isCompact ? "w-20" : "w-80",
             mounted && "animate-fade-in"
           )}
@@ -576,12 +597,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* Mobile Header */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 z-40 px-4 py-3 shadow-sm">
+        <div className={cn(
+          "fixed top-0 left-0 right-0 bg-background border-b border-border z-40 px-4 py-3 shadow-sm"
+        )}>
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">ScaleUpLink</h1>
             <div className="flex items-center space-x-4">
-              <MessageSquare className="h-6 w-6 text-slate-800" />
-              <Avatar className="h-8 w-8 border-2 border-white shadow-sm">
+              <MessageSquare className="h-6 w-6 text-foreground" />
+              <Avatar className="h-8 w-8 border-2 border-border shadow-sm">
                 <AvatarImage src="https://images.unsplash.com/photo-1618160702438-9b02ab6515c9" alt="User Avatar" />
                 <AvatarFallback className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">JD</AvatarFallback>
               </Avatar>
@@ -592,7 +615,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] h-16 z-50">
+        <div className={cn(
+          "fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.05)] h-16 z-50"
+        )}>
           <div className="grid grid-cols-5 h-full">
             {mobileNavItems.map((item) => {
               const isActive = showCreatePost ? item.label === 'Create' : location.pathname === item.path;
@@ -604,7 +629,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     "flex flex-col items-center justify-center transition-colors duration-200",
                     isActive 
                       ? "text-orange-500" 
-                      : "text-slate-400 hover:text-slate-600"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <item.icon className={cn(

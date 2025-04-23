@@ -1,80 +1,68 @@
-// controllers/event/eventController.ts
-import { injectable, inject } from "tsyringe";
-import IEventController from "./interface/IEventController";
-import EventService from "../../services/event/eventService";
-import { Request, Response } from "express";
-import { ICreateEventDTO, RawEventProps } from "../../interfaces/IEvent";
+import { Request, Response,NextFunction } from 'express';
+import { inject, injectable } from 'tsyringe';
+import EventService from '../../services/event/eventService';
+import { RawEventProps } from '../../interfaces/IEvent';
+import IEventController from './interface/IEventController';
 
+// interface IEventController {
+//   createEvent(req: Request, res: Response, next: NextFunction): Promise<void>;
+//   getAllEvents(req: Request, res: Response, next: NextFunction): Promise<void>;
+//   getEventById(req: Request, res: Response, next: NextFunction): Promise<void>;
+// }
 @injectable()
 class EventController implements IEventController {
-  private eventService: EventService;
+  constructor(@inject('EventService') private eventService: EventService) {}
 
-  constructor(@inject("EventService") eventService: EventService) {
-    this.eventService = eventService;
-  }
-
-  createEvent = async (req: Request, res: Response): Promise<void> => {
+  async createEvent(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data: ICreateEventDTO = req.body;
-      const currentUserId = req.user?.id;
-
+      const currentUserId = req.user?.id; 
       if (!currentUserId) {
-        res.status(401).json({ message: "Unauthorized: User ID missing" });
+        res.status(401).json({ success: false, message: 'Unauthorized' });
         return;
       }
-
-      const event = await this.eventService.createEvent(currentUserId, data);
-      res.status(201).json({ message: "Event created successfully", event });
+      const eventData = req.body;
+      const event = await this.eventService.createEvent(currentUserId, eventData);
+      res.status(201).json({ success: true, data: event });
     } catch (error) {
-      console.error("Error in Controller:", error);
-      res.status(500).json({ message: "Failed to create event" });
-    }
-  };
-
-  getAllEvents = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const user = req.user
-        console.log(user,"dddd")
-      const events: RawEventProps[] = await this.eventService.getAllEvents();
-      res.status(200).json({
-        success: true,
-        data: events,
-        message: 'Events fetched successfully'
-      });
-    } catch (error) {
-      console.error('Controller error:', error);
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Internal server error',
-        data: null
-      });
+      this.handleError(res, error, next);
     }
   }
-  getEventsById = async (req: Request, res: Response): Promise<void> => {
+
+  async getAllEvents(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params; 
-      if (!id) {
-        res.status(400).json({ success: false, message: "Event ID is required", data: null });
+      const re = req.user
+      console.log(re);
+      
+      const events: RawEventProps[] = await this.eventService.getAllEvents();
+      res.status(200).json({ success: true, data: events });
+    } catch (error) {
+      this.handleError(res, error, next);
+    }
+  }
+
+  async getEventById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const eventId = req.params.id;
+      const event: RawEventProps | null = await this.eventService.getEventsById(eventId as string);
+      if (!event) {
+        res.status(404).json({ success: false, message: 'Event not found' });
         return;
       }
-
-      const event = await this.eventService.getEventsById(id as string);
-      
-
-      res.status(200).json({
-        success: true,
-        data: event,
-        message: "Event fetched successfully",
-      });
+      res.status(200).json({ success: true, data: event });
     } catch (error) {
-      console.error("Error fetching event by ID:", error);
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : "Internal server error",
-        data: null,
-      });
+      this.handleError(res, error, next);
     }
-  };
+  }
+
+  private handleError(res: Response, error: unknown, next: NextFunction): void {
+    console.error('Controller Error:', error);
+    if (error instanceof Error) {
+      res.status(400).json({ success: false, message: error.message });
+    } else {
+      res.status(500).json({ success: false, message: 'An unexpected error occurred' });
+    }
+    next(error);
+  }
 }
 
 export default EventController;

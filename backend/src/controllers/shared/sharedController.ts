@@ -57,15 +57,21 @@ export const checkUserStatus = (
         return;
       }
 
-      let isActive = true;
+      let isBlocked = true;
 
       if (user.role === "entrepreneur") {
-        isActive = await authService.checkActiveStatus(user.id);
+        isBlocked = await authService.checkActiveStatus(user.id);
       } else if (user.role === "investor") {
-        isActive = await investorService.checkActiveStatus(user.id);
+        isBlocked = await investorService.checkActiveStatus(user.id);
       }
 
-      if (!isActive) {
+      if (!isBlocked) {
+        
+        res.clearCookie("refreshToken", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        });
         res.status(403).json({ success: false, message: "User is Blocked" });
         return;
       }

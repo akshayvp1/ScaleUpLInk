@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { useNavigate } from 'react-router-dom';
+import MainImage from "../../assets/professions1.jpg"
 import {
   Building,
   Calendar,
@@ -97,7 +98,7 @@ const LandingPage: React.FC = () => {
             
             <div className="hidden lg:block">
               <img 
-                src="/src/assets/professions1.jpg" 
+                src={MainImage} 
                 alt="Platform preview" 
                 className="rounded-lg shadow-xl"
               />

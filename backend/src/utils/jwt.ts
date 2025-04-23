@@ -83,7 +83,7 @@ if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
 export interface ITokenPayload {
   id: string;
   email: string;
-  role: "entrepreneur" | "investor";
+  role: "entrepreneur" | "investor"|"admin";
   exp?: number;
   iat?: number;
 }

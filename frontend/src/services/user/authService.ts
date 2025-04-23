@@ -140,7 +140,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
       store.dispatch(signIn({ email: user.email, role: user.role, token: accessToken }));
       store.dispatch(setTempUser({ tempUser: user }));
       
-      return { user, accessToken }; // ✅ Fix: Return both user and token
+      return { user, accessToken }; 
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.message || "Login failed");
@@ -291,7 +291,10 @@ async logout(): Promise<void> {
   }
    async forgotPassword(email:string):Promise<void>{
      try{
+        localStorage.setItem("email", email);
          const response = await api.shared.post('/forgot-password',{email})
+         
+         console.log(response,"ooooooooo")
          return response.data
      }catch(error){
       console.log(error)

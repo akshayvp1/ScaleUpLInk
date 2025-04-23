@@ -34,6 +34,7 @@ class SharedService {
   async checkStatus(): Promise<StatusResponse> {
     try {
       const response = await api.shared.get("/auth/status");
+      console.log(response.data.message,"edooooooo")
       return response.data;
     } catch (error) {
       console.error("Error checking status:", error);

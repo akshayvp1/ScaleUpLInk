@@ -107,6 +107,8 @@ const API_URLS = {
   shared: import.meta.env.VITE_API_SHARED,
   investor: import.meta.env.VITE_API_INVESTOR,
   entrepreneur: import.meta.env.VITE_API_ENTREPRENEUR,
+  admin:import.meta.env.VITE_API_ADMIN,
+  stripe:import.meta.env.VITE_API_STRIPE
 } as const;
 
 export type UserRole = keyof typeof API_URLS;
@@ -201,7 +203,7 @@ const createAxiosInstance = (role: UserRole): AxiosInstance => {
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return instance(originalRequest);
       }
-
+       
       console.error("Refresh failed, rejecting request");
       return Promise.reject(error);
     }
@@ -214,4 +216,6 @@ export const api = {
   shared: createAxiosInstance("shared"),
   investor: createAxiosInstance("investor"),
   entrepreneur: createAxiosInstance("entrepreneur"),
+  admin:createAxiosInstance("admin"),
+  stripe:createAxiosInstance("stripe")
 };
