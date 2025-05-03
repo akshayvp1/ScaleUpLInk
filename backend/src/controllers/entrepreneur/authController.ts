@@ -717,6 +717,29 @@ class AuthController implements IAuthController {
       res.status(500).json({ message: "Internal server error" });
     }
   }
+  async changeOldPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      console.log(currentPassword,newPassword,"kkkkkkkk")
+      const email = req.user?.email
+      console.log(email,"jjjjjjj")
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ message: "currentPassword and new password are required" });
+        return;
+      }
+
+      const response = await this.authService.changeOldPassword(email as string,currentPassword, newPassword);
+      if (!response) {
+        res.status(400).json({ message: "Failed to update password" });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error in changePassword:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
 
   private handleError(res: Response, error: unknown): void {
     if (error instanceof Error) {

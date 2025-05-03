@@ -28,9 +28,9 @@ import AdminAuthController from "../controllers/admin/adminAuthController";
 import AdminManageService from "../services/admin/adminMangeService";
 import AdminManageRepository from "../repositories/admin/adminManageRepository";
 import AdminMangeControllers from "../controllers/admin/adminManageController";
-import StripeController from "../controllers/stripe/stripeController"
-import StripeService from '../services/stripe/stripeService'
-import StripeRepository from "../repositories/stripe/stripeRepository"
+import PaymentController from "../controllers/payments/paymentController";
+import PaymentService from "../services/payment/paymentService";
+import PaymentRepository from "../repositories/payment/PaymentRepository";
 import { BookingsModel } from "../models/bookingModel";
 // Register models (concrete values)
 container.register("UserModel", { useValue: UserModel });
@@ -61,8 +61,8 @@ container.register("AdminAuthService",AdminAuthService)
 container.register("AdminManageRepository",AdminManageRepository)
 container.register("AdminManageService",AdminManageService)
 container.register("AdminMangeControllers",AdminMangeControllers)
-container.register("StripeController",StripeController)
-container.register("StripeService",StripeService)
-container.register("StripeRepository",StripeRepository)
+container.register("PaymentController",PaymentController)
+container.register("PaymentService",PaymentService)
+container.register("PaymentRepository",PaymentRepository)
 
 export default container;

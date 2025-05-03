@@ -52,8 +52,6 @@
 //   };
 // };
 
-
-
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken, ITokenPayload } from "../utils/jwt";
 
@@ -69,7 +67,7 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   const authHeader = req.headers["authorization"];
-  console.log("Auth Header:", authHeader); // Debug full header
+  console.log("Auth Header:", authHeader); 
   const token = authHeader?.split(" ")[1];
   console.log("Token:", token, "NUUUU");
 

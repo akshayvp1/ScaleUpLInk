@@ -42,6 +42,7 @@ interface IAuthServiceEntrepreneur {
   entrepeneruRole(userData:Partial<IUser>):Promise<void>
   addInterests(data: InterestData): Promise<void>
   updateDetail(data:updateData):Promise<void>
+  getUserById(userId: string): Promise<IUser | null>;
 }
 
 type SignInResult = { user: IUser };
@@ -107,30 +108,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
     }
   }
 
-  // async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<SignInResult> {
-  //   try {
-  //     const response = await api[role].post("/signin", credentials);
-  //     console.log(response, "hhhh");
-  //     console.log(response.data.user.email, "fffff");
-  //     console.log(response.data.accessToken, "ddddd");
-  //     const {accessToken,user}=response.data
-  //     store.dispatch(
-  //       signIn({
-  //         email:user.email,
-  //         role:user.role,
-  //         token:accessToken
-  //       })
-  //      )
-      
-  //      store.dispatch(setTempUser({ tempUser: user }));
-  //     return user;
-  //   } catch (error: unknown) {
-  //     if (axios.isAxiosError(error)) {
-  //       throw new Error(error.response?.data?.message || "Login failed");
-  //     }
-  //     throw new Error("An unknown error occurred during login");
-  //   }
-  // }
+
   
   async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<{ user: any; accessToken: string }> {
     try {
@@ -150,11 +128,11 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
 }
 async logout(): Promise<void> {
   try {
-    await api.shared.post('/auth/signout'); // Fixed typo from 'singout' to 'signout'
-    store.dispatch(signOut()); // Dispatch Redux action to clear auth state
+    await api.shared.post('/auth/signout'); 
+    store.dispatch(signOut()); 
   } catch (error) {
     console.error('Logout error:', error);
-    throw error; // Re-throw error so it can be caught in the component
+    throw error; 
   }
 }
 
@@ -231,7 +209,7 @@ async logout(): Promise<void> {
       const response = await api.entrepreneur.post("/entrepreneur-role",{userData})
 
       console.log(response.data,">>>>>")
-     //  const {investor,accessToken}=response.data
+     
       console.log(response)
       const {user,accessToken} = response.data
 
@@ -259,7 +237,7 @@ async logout(): Promise<void> {
       console.log("Adding interests:", data);
       const response = await api.shared.patch("/addInterests", data);
       console.log(response,"hpppppp")
-      // Optionally update the user in the store if the backend returns updated user data
+     
       if (response.data.user) {
         store.dispatch(setTempUser({ tempUser: response.data.user }));
       }
@@ -318,6 +296,14 @@ async logout(): Promise<void> {
       console.log(error)
     }
    }
+   async changeOldPassword(currentPassword:string,newPassword:string,):Promise<void>{
+    try{
+     const response = await api.shared.post('/change-old-password',{currentPassword,newPassword,})
+     return response.data
+    }catch(error){
+      console.log(error)
+    }
+   }
 
   async signOut(role: "entrepreneur" | "investor"): Promise<void> {
     try {
@@ -328,6 +314,21 @@ async logout(): Promise<void> {
         throw new Error(error.response?.data?.message || "Logout failed");
       }
       throw new Error("An unknown error occurred during logout");
+    }
+  }
+  async getUserById(userId: string): Promise<IUser | null> {
+    try {
+      const response = await api.shared.get(`/users/${userId}`);
+      return response.data.user as IUser;
+    } catch (error) {
+      console.error(`Error fetching user with ID ${userId}:`, error);
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          return null; // User not found
+        }
+        throw new Error(error.response?.data?.message || "Failed to fetch user");
+      }
+      throw new Error("An unknown error occurred while fetching user");
     }
   }
 }

@@ -366,6 +366,31 @@ async changePassword(email: string, newPassword: string): Promise<boolean> {
       return false;
   }
 }
+async changeOldPassword(email: string, currentPassword: string, newPassword: string): Promise<boolean> {
+  try {
+    // Step 1: Get the user
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user || !user.password) {
+      throw new Error("User not found or password not set.");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      console.log("Incorrect current password.");
+      return false;
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    const updated = await this.userRepository.changeOldPassword(email, hashedNewPassword);
+
+    return updated;
+  } catch (error) {
+    console.error("Error in changePassword:", error);
+    return false;
+  }
+}
 
 
 }

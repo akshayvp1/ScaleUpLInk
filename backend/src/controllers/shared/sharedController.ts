@@ -43,10 +43,12 @@ import { Request, Response, NextFunction } from "express";
 import IAuthService from "../../services/entrepreneur/interface/IAuthService";
 import IInvestorService from "../../services/investor/interface/IInvestorService";
 import { ITokenPayload } from "../../utils/jwt";
+import { IAdminAuthService } from "../../services/admin/interface/IAdminAuthService";
 
 export const checkUserStatus = (
   authService: IAuthService,
-  investorService: IInvestorService
+  investorService: IInvestorService,
+  adminAuthService:IAdminAuthService
 ) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -63,6 +65,8 @@ export const checkUserStatus = (
         isBlocked = await authService.checkActiveStatus(user.id);
       } else if (user.role === "investor") {
         isBlocked = await investorService.checkActiveStatus(user.id);
+      }else if(user.role==="admin"){
+        isBlocked = await adminAuthService.checkActiveStatus(user.id);
       }
 
       if (!isBlocked) {

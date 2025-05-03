@@ -56,6 +56,19 @@ class AdminAuthService implements IAdminAuthService {
       return { isMatch: false, message: "Internal server error." };
     }
   }
+  async checkActiveStatus(id: string): Promise<boolean> {
+    try {
+      const admin = await this.adminAuthRepository.findAdminById(id);
+      console.log(admin,"🙈🙈🙈🙈")
+      if (!admin) {
+        throw new Error("Admin not found");
+      }
+      return admin.isActive;
+    } catch (error) {
+      throw error;
+    }
+  }
+  
 }
 
 export default AdminAuthService;

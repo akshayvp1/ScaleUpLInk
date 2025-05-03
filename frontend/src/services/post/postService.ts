@@ -399,6 +399,15 @@ class PostService implements IPostService {
       throw error;
     }
   }
+  async getPostByUserId(userId: string): Promise<Post[]> {
+    try {
+      const response = await api.shared.get(`/posts/user/${userId}`);
+      return response.data.posts || [];
+    } catch (error) {
+      console.error(`Error fetching posts for user ${userId}:`, error);
+      throw error;
+    }
+  }
 }
 
 export default new PostService();

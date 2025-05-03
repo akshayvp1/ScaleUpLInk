@@ -5,11 +5,30 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import morgan from 'morgan';
 import fullRouter from './routes/router';
+import payment from "./routes/paymentRouter";
 import './config/container'
 import cookieParser from "cookie-parser";
-
 dotenv.config();
 const app = express();
+
+app.use((req,res,next)=>{
+  console.log(req.originalUrl,"ooooo");
+  
+  if(req.originalUrl==='/payments/webhook'){
+    next()
+  }else{
+    express.json({limit:'50mb'})(req,res,next)
+  }
+    
+})
+app.use((req,res,next)=>{
+  if(req.originalUrl==='/payments/webhook'){
+    next()
+  }else{
+    express.urlencoded({limit:'50mb',extended:true})(req,res,next)
+  }
+})
+
 const PORT = process.env.PORT || 4040;
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -34,6 +53,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use('/api', fullRouter);
+app.use('/payments',payment)
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

@@ -1,5 +1,8 @@
-// config/stripe.js
-const Stripe = require('stripe');
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY); // store this in .env
+// src/config/stripe.ts
+import Stripe from "stripe";
 
-module.exports = stripe;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2022-11-15", 
+});
+
+export default stripe;

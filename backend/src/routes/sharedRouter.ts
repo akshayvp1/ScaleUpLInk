@@ -86,6 +86,7 @@ import { checkUserStatus } from "../controllers/shared/sharedController";
 import AuthService from "../services/entrepreneur/authService";
 import InvestorService from "../services/investor/investorService";
 import EventController from "../controllers/event/eventController";
+import AdminAuthService from "../services/admin/adminAuthService";
 
 const shared = express.Router();
 
@@ -98,14 +99,16 @@ const eventController = container.resolve(EventController)
 // Services
 const authService = container.resolve(AuthService);
 const investorService = container.resolve(InvestorService);
+const adminAuthService = container.resolve(AdminAuthService)
 
 // ================== Auth Routes ==================
-shared.get("/auth/status", authenticate, checkUserStatus(authService, investorService));
+shared.get("/auth/status", authenticate, checkUserStatus(authService, investorService,adminAuthService));
 shared.post("/googleAuth", authController.googleSignIn.bind(authController));
 shared.post("/refresh-token", authController.refreshToken.bind(authController));
 shared.post("/forgot-password", authController.otpForgotPassword.bind(authController));
 shared.post("/forgot-password-otp", authController.verifyForgotOtp.bind(authController));
 shared.post("/change-password", authController.changePassword.bind(authController));
+shared.post("/change-old-password", authenticate,authController.changeOldPassword.bind(authController));
 shared.get("/current-user", authenticate, authController.currentUser.bind(authController));
 shared.post("/auth/signout", authController.signOut.bind(authController));
 shared.get("/users/:userId", authenticate, authController.getUserById.bind(authController));
@@ -134,4 +137,7 @@ shared.get("/stories/:currentUserId/followed", authenticate, storyController.get
 shared.post('/event-creation',authenticate,eventController.createEvent.bind(eventController))
 shared.get('/get-events',authenticate,eventController.getAllEvents.bind(eventController))
 shared.get('/events/:id',authenticate,eventController.getEventById.bind(eventController))
+shared.get('/paid-events',authenticate,eventController.getPaidEvents.bind(eventController))
+shared.get('/created-by',authenticate,eventController.createdEvents.bind(eventController))
+
 export default shared;

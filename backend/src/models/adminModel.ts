@@ -9,8 +9,8 @@ const AdminSchema: Schema<IAdmin> = new Schema({
     enum: ["admin", "entrepreneur", "investor"], 
     default: "admin" 
   },
+  isActive: { type: Boolean, default: true },  // 👈 Correct: Capital "B"
 });
-
 
 const AdminModel = model<IAdmin>("Admin", AdminSchema);
 

@@ -1,5 +1,5 @@
 import { Request,Response } from "express";
 
-export interface IStripeService{
+export interface IPaymentService{
     
 }

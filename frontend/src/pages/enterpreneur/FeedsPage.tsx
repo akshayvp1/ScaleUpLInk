@@ -1,11 +1,11 @@
 import React from 'react'
 // import Navbar from '../../components/navbar/navbar'
-import AgeCard from '../../components/basics/eventCard'
+import Feeds from '../../components/basics/feeds'
 function ageCard() {
   return (
     <div>
     {/* <Navbar/> */}
-    <AgeCard/>
+    <Feeds/>
     </div>
   )
 }

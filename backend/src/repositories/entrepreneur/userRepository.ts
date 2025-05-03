@@ -175,6 +175,22 @@ for (const field of allowedFields) {
         return false;
     }
 }
+async changeOldPassword(email: string, hashedNewPassword: string): Promise<boolean> {
+  try {
+    const updatedUser = await this.model.findOneAndUpdate(
+      { email },
+      { $set: { password: hashedNewPassword } },
+      { new: true, runValidators: true }
+    ).lean();
+
+    console.log(updatedUser, "Password updated");
+    return !!updatedUser;
+  } catch (error) {
+    console.error("Error in updatePassword:", error);
+    return false;
+  }
+}
+
   
 
 }

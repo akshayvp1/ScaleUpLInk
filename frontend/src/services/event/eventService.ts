@@ -59,7 +59,7 @@ class EventService implements IEventService {
       throw error;
     }
   }
-
+  
   async getEventById(id: string): Promise<RawEventProps> {
     try {
       const response = await api.shared.get<{ success: boolean; data: RawEventProps; message: string }>(`/events/${id}`);
@@ -67,6 +67,38 @@ class EventService implements IEventService {
       return { ...response.data.data, tickets: response.data.data.tickets || [] };
     } catch (error) {
       console.error(`Error fetching event by ID ${id}:`, error);
+      throw error;
+    }
+  }
+  async getPaidEvents(): Promise<RawEventProps[]> {
+    try {
+      const response = await api.shared.get<ApiEventResponse>('/paid-events');
+      console.log(response, "Fetched paid events");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching paid events:", error);
+      throw error;
+    }
+  }
+
+  async getCreatedByUserEvents(): Promise<RawEventProps[]> {
+    try {
+      const response = await api.shared.get<ApiEventResponse>('/created-by');
+      console.log(response, "Fetched events created by user");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching events created by user:", error);
+      throw error;
+    }
+  }
+
+  async getCompletedEvents(): Promise<RawEventProps[]> {
+    try {
+      const response = await api.shared.get<ApiEventResponse>('/completed');
+      console.log(response, "Fetched completed events");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching completed events:", error);
       throw error;
     }
   }

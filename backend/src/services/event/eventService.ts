@@ -2,10 +2,13 @@ import { inject, injectable } from 'tsyringe';
 import IEventService from './interface/IEventService';
 import EventRepository from '../../repositories/event/eventRepository';
 import { ICreateEventDTO, EventDocument, RawEventProps } from '../../interfaces/IEvent';
-
+import UserRepository from '../../repositories/entrepreneur/userRepository';
 @injectable()
 class EventService implements IEventService {
-  constructor(@inject('EventRepository') private eventRepository: EventRepository) {}
+  constructor(
+    @inject('EventRepository') private readonly eventRepository: EventRepository,
+    @inject('UserRepository') private readonly userRepository: UserRepository
+  ) {}
 
   async createEvent(currentUserId: string, data: ICreateEventDTO): Promise<EventDocument> {
     try {
@@ -54,6 +57,32 @@ class EventService implements IEventService {
     } catch (error) {
       console.error(`Service Error fetching event by ID ${eventId}:`, error);
       throw new Error(`Failed to fetch event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  async getPaidEvents(userId:string):Promise<EventDocument[]>{
+   try{
+    const user = await this.userRepository.findUserById(userId)
+    if(!user){
+      throw Error
+    }else{
+    return await this.eventRepository.getPaidEvents(userId as string)
+    }
+   }catch(error){
+    console.log(error)
+    throw error;
+   }
+  }
+  async createdEvents(userId:string):Promise<EventDocument[]>{
+    try{
+      const user = await this.userRepository.findUserById(userId)
+      if(!user){
+        throw Error
+      }else{
+        return await this.eventRepository.createdEvents(userId as string)
+      }
+    }catch(error){
+      console.log(error)
+      throw error;
     }
   }
 }
