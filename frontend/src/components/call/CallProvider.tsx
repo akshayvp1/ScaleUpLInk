@@ -78,8 +78,8 @@ interface CallErrorPayload {
 interface CallPeerStatePayload {
   callId: string;
   userId: string;
-  muted: boolean;
-  cameraOff: boolean;
+  muted?: boolean;
+  cameraOff?: boolean;
 }
 
 type MediaFailureReason =
@@ -257,6 +257,8 @@ export default function CallProvider({ children }: { children: ReactNode }) {
   const makingOfferRef = useRef<Set<string>>(new Set());
   const ignoreOfferRef = useRef<Map<string, boolean>>(new Map());
   const pendingRenegotiationRef = useRef<Set<string>>(new Set());
+  const recoveringVideoRef = useRef(false);
+  const recoverVideoRef = useRef<() => void>(() => {});
 
   currentUserIdRef.current = currentUserId;
   currentUserNameRef.current = currentUserName;
@@ -294,8 +296,12 @@ export default function CallProvider({ children }: { children: ReactNode }) {
   );
 
   const stopLocalStream = useCallback(() => {
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.onended = null;
+    });
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
+    recoveringVideoRef.current = false;
     setLocalStream(null);
     isMutedRef.current = false;
     isCameraOffRef.current = false;
@@ -373,26 +379,53 @@ export default function CallProvider({ children }: { children: ReactNode }) {
         noiseSuppression: true,
       };
 
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user",
+      };
+
       let stream: MediaStream;
 
       if (callType === "video") {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: audioConstraints,
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: "user",
-            },
+            video: videoConstraints,
           });
-        } catch {
-          // The camera may be missing, busy, or the user may have denied
-          // camera access. Fall back to the microphone so the call can still
-          // continue as an audio call instead of failing outright.
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: audioConstraints,
-            video: false,
-          });
+        } catch (error) {
+          // Some cameras (especially external/mobile ones) reject the
+          // preferred resolution or facing mode even though they are
+          // available. Retry once with relaxed constraints before giving up
+          // on video entirely. Permission and missing-device failures cannot
+          // be fixed by relaxing constraints, so fall straight back to audio.
+          const reason = getMediaFailureReason(error);
+          const canRetryVideo =
+            reason === "unsupported" ||
+            reason === "device_busy" ||
+            reason === "unknown";
+
+          if (canRetryVideo) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: audioConstraints,
+                video: true,
+              });
+            } catch {
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: audioConstraints,
+                video: false,
+              });
+            }
+          } else {
+            // The camera may be missing or the user may have denied camera
+            // access. Fall back to the microphone so the call can still
+            // continue instead of failing outright.
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: audioConstraints,
+              video: false,
+            });
+          }
         }
       } else {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -408,15 +441,37 @@ export default function CallProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      const hasVideo = stream.getVideoTracks().length > 0;
+      const hasVideo = stream
+        .getVideoTracks()
+        .some((track) => track.readyState !== "ended");
+
+      // A freshly captured track must start enabled. Never initialise a call
+      // with the receiver's video track disabled.
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+
+      // A track can be ended by the operating system (device unplugged,
+      // another app taking the camera, sleep/wake, etc.). Attempt to recover
+      // it instead of silently leaving the call camera-less.
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = true;
+        track.onended = () => {
+          recoverVideoRef.current();
+        };
+      });
+
       const cameraUnavailable = callType === "video" && !hasVideo;
+      // Only a video call has a camera state. Audio calls must never report
+      // the camera as disabled.
+      const cameraOff = callType === "video" && !hasVideo;
 
       localStreamRef.current = stream;
       setLocalStream(stream);
       isMutedRef.current = false;
-      isCameraOffRef.current = !hasVideo;
+      isCameraOffRef.current = cameraOff;
       setIsMuted(false);
-      setIsCameraOff(!hasVideo);
+      setIsCameraOff(cameraOff);
 
       return { stream, cameraUnavailable };
     },
@@ -503,7 +558,7 @@ export default function CallProvider({ children }: { children: ReactNode }) {
 
     if (
       callType === "video" &&
-      !stream?.getVideoTracks().some((track) => track.readyState === "live")
+      !stream?.getVideoTracks().some((track) => track.readyState !== "ended")
     ) {
       try {
         peer.addTransceiver("video", { direction: "recvonly" });
@@ -785,6 +840,87 @@ export default function CallProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const applyLocalVideoTrack = useCallback(
+    (videoTrack: MediaStreamTrack) => {
+      const currentStream = localStreamRef.current;
+
+      if (!currentStream) {
+        videoTrack.stop();
+        return;
+      }
+
+      // Any previous camera track is superseded by the new one.
+      currentStream.getVideoTracks().forEach((track) => {
+        if (track !== videoTrack) {
+          track.onended = null;
+          currentStream.removeTrack(track);
+          track.stop();
+        }
+      });
+
+      if (!currentStream.getVideoTracks().includes(videoTrack)) {
+        currentStream.addTrack(videoTrack);
+      }
+
+      videoTrack.enabled = true;
+
+      const nextStream = new MediaStream(currentStream.getTracks());
+      localStreamRef.current = nextStream;
+      setLocalStream(nextStream);
+      isCameraOffRef.current = false;
+      setIsCameraOff(false);
+
+      peersRef.current.forEach((peer) => {
+        attachLocalVideoTrack(peer, videoTrack, nextStream);
+      });
+
+      [...peersRef.current.keys()].forEach((peerId) => {
+        void makeOffer(peerId);
+      });
+
+      broadcastPeerState();
+    },
+    [attachLocalVideoTrack, broadcastPeerState, makeOffer]
+  );
+
+  const recoverVideoTrack = useCallback(() => {
+    const call = activeCallRef.current;
+    const callId = callIdRef.current;
+
+    if (!call || call.callType !== "video" || !callId) return;
+    if (isCameraOffRef.current) return;
+    if (recoveringVideoRef.current) return;
+
+    recoveringVideoRef.current = true;
+
+    void (async () => {
+      try {
+        const videoTrack = await acquireVideoTrack();
+
+        if (
+          callIdRef.current !== callId ||
+          activeCallRef.current?.callType !== "video" ||
+          isCameraOffRef.current
+        ) {
+          videoTrack.stop();
+          return;
+        }
+
+        videoTrack.onended = () => {
+          recoverVideoRef.current();
+        };
+
+        applyLocalVideoTrack(videoTrack);
+      } catch {
+        // Keep the audio call running if the camera cannot be recovered.
+      } finally {
+        recoveringVideoRef.current = false;
+      }
+    })();
+  }, [acquireVideoTrack, applyLocalVideoTrack]);
+
+  recoverVideoRef.current = recoverVideoTrack;
+
   const startCall = useCallback(
     async (input: StartCallInput) => {
       if (!currentUserIdRef.current) {
@@ -999,7 +1135,7 @@ export default function CallProvider({ children }: { children: ReactNode }) {
 
     const liveVideoTracks = stream
       .getVideoTracks()
-      .filter((track) => track.readyState === "live");
+      .filter((track) => track.readyState !== "ended");
 
     if (liveVideoTracks.length > 0) {
       const nextCameraOff = !isCameraOffRef.current;
@@ -1031,48 +1167,18 @@ export default function CallProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const currentStream = localStreamRef.current;
-        if (!currentStream) {
-          videoTrack.stop();
-          return;
-        }
+        videoTrack.onended = () => {
+          recoverVideoRef.current();
+        };
 
-        currentStream.getVideoTracks().forEach((track) => {
-          if (track.readyState !== "live") {
-            currentStream.removeTrack(track);
-            track.stop();
-          }
-        });
-
-        currentStream.addTrack(videoTrack);
-
-        const nextStream = new MediaStream(currentStream.getTracks());
-        localStreamRef.current = nextStream;
-        setLocalStream(nextStream);
-        isCameraOffRef.current = false;
-        setIsCameraOff(false);
-
-        peersRef.current.forEach((peer) => {
-          attachLocalVideoTrack(peer, videoTrack, nextStream);
-        });
-
-        [...peersRef.current.keys()].forEach((peerId) => {
-          void makeOffer(peerId);
-        });
-
-        broadcastPeerState();
+        applyLocalVideoTrack(videoTrack);
       } catch (error) {
         toast.error(getMediaErrorMessage(error, "video"));
       } finally {
         cameraRequestRef.current = false;
       }
     })();
-  }, [
-    acquireVideoTrack,
-    attachLocalVideoTrack,
-    broadcastPeerState,
-    makeOffer,
-  ]);
+  }, [acquireVideoTrack, applyLocalVideoTrack, broadcastPeerState]);
 
   const toggleSpeaker = useCallback(() => {
     setIsSpeakerMuted((previous) => !previous);
@@ -1174,7 +1280,11 @@ export default function CallProvider({ children }: { children: ReactNode }) {
       // The participant(s) who were already in the call create the WebRTC
       // offers when they receive call_peer_joined. The newly joined side only
       // answers, which avoids offer glare.
-      broadcastPeerState();
+      //
+      // Do not broadcast the microphone/camera state here. The local media was
+      // just acquired and the user has not touched any control yet, so sending
+      // a state message during initialization can wrongly tell peers that the
+      // camera is off before the video transceiver is even negotiated.
     }
 
     function onCallPeerJoined(payload: CallPeerJoinedPayload) {
@@ -1214,7 +1324,6 @@ export default function CallProvider({ children }: { children: ReactNode }) {
       // Existing participants initiate the offer to the peer that just
       // joined, giving the call a deterministic negotiation direction.
       void makeOffer(payload.userId);
-      broadcastPeerState();
     }
 
     function onCallRejected(payload: CallRejectedPayload) {
@@ -1300,8 +1409,12 @@ export default function CallProvider({ children }: { children: ReactNode }) {
           participant.userId === payload.userId
             ? {
                 ...participant,
-                muted: payload.muted,
-                cameraOff: payload.cameraOff,
+                ...(typeof payload.muted === "boolean"
+                  ? { muted: payload.muted }
+                  : {}),
+                ...(typeof payload.cameraOff === "boolean"
+                  ? { cameraOff: payload.cameraOff }
+                  : {}),
               }
             : participant
         ),

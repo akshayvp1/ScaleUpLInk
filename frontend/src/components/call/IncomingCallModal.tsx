@@ -85,7 +85,7 @@ export default function IncomingCallModal() {
           className="h-9 gap-1.5"
         >
           <PhoneOff className="h-4 w-4" />
-          Decline
+          Reject
         </Button>
         <Button
           type="button"
