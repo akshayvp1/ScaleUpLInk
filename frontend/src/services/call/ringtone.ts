@@ -1,7 +1,16 @@
 type AudioContextConstructor = new () => AudioContext;
 
 const RING_INTERVAL_MS = 2200;
-const RING_FREQUENCIES = [440, 480];
+
+// A short, musical chime (E5, G5, B5, G5). Four notes keep the ringtone
+// pleasant without overlapping the next ring cycle or stacking oscillators.
+const RING_MELODY: Array<{ frequency: number; offset: number; duration: number }> =
+  [
+    { frequency: 659.25, offset: 0, duration: 0.18 },
+    { frequency: 783.99, offset: 0.2, duration: 0.18 },
+    { frequency: 987.77, offset: 0.4, duration: 0.3 },
+    { frequency: 783.99, offset: 0.76, duration: 0.2 },
+  ];
 
 let audioContext: AudioContext | null = null;
 let ringTimer: number | null = null;
@@ -36,6 +45,18 @@ function getAudioContext(): AudioContext | null {
   return audioContext;
 }
 
+function resumeAudioContext(context: AudioContext) {
+  try {
+    const result = context.resume();
+
+    if (result && typeof result.catch === "function") {
+      void result.catch(() => {});
+    }
+  } catch {
+    // Some browsers throw if the context has already been closed.
+  }
+}
+
 function playTone(
   context: AudioContext,
   frequency: number,
@@ -48,9 +69,11 @@ function playTone(
   oscillator.type = "sine";
   oscillator.frequency.setValueAtTime(frequency, startsAt);
 
+  // Soft attack and release keep the melody from sounding harsh on phone
+  // speakers while still being loud enough to notice.
   gain.gain.setValueAtTime(0.0001, startsAt);
-  gain.gain.exponentialRampToValueAtTime(0.16, startsAt + 0.03);
-  gain.gain.setValueAtTime(0.16, startsAt + duration - 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.14, startsAt + 0.03);
+  gain.gain.setValueAtTime(0.14, startsAt + duration - 0.06);
   gain.gain.exponentialRampToValueAtTime(0.0001, startsAt + duration);
 
   oscillator.connect(gain);
@@ -60,8 +83,12 @@ function playTone(
 
   oscillator.onended = () => {
     activeOscillators.delete(oscillator);
-    oscillator.disconnect();
-    gain.disconnect();
+    try {
+      oscillator.disconnect();
+      gain.disconnect();
+    } catch {
+      // The browser may have already detached the nodes.
+    }
   };
 
   oscillator.start(startsAt);
@@ -72,13 +99,17 @@ function playRingPattern() {
   const context = getAudioContext();
   if (!context) return;
 
-  void context.resume().catch(() => {});
+  resumeAudioContext(context);
 
   const start = context.currentTime + 0.03;
 
-  RING_FREQUENCIES.forEach((frequency) => {
-    playTone(context, frequency, start, 0.32);
-    playTone(context, frequency, start + 0.45, 0.32);
+  RING_MELODY.forEach((note) => {
+    playTone(
+      context,
+      note.frequency,
+      start + note.offset,
+      note.duration
+    );
   });
 }
 
@@ -90,7 +121,7 @@ export function primeRingtoneAudio() {
   const resume = () => {
     const context = getAudioContext();
     if (context) {
-      void context.resume().catch(() => {});
+      resumeAudioContext(context);
     }
   };
 
@@ -101,16 +132,21 @@ export function primeRingtoneAudio() {
   };
 
   window.addEventListener("pointerdown", resume, options);
+  window.addEventListener("mousedown", resume, options);
   window.addEventListener("touchstart", resume, options);
   window.addEventListener("keydown", resume, { once: true, capture: true });
+  window.addEventListener("focus", resume);
+  document.addEventListener("visibilitychange", resume);
 }
 
 export function startRingtone() {
   if (isRinging) return;
 
-  isRinging = true;
+  const context = getAudioContext();
+  if (!context) return;
 
-  if (!getAudioContext()) return;
+  isRinging = true;
+  resumeAudioContext(context);
 
   playRingPattern();
   ringTimer = window.setInterval(playRingPattern, RING_INTERVAL_MS);
@@ -126,9 +162,13 @@ export function stopRingtone() {
 
   activeOscillators.forEach((oscillator) => {
     try {
+      oscillator.onended = null;
       oscillator.stop();
+      oscillator.disconnect();
     } catch {
-      activeOscillators.delete(oscillator);
+      // Ignore nodes that have already finished.
     }
   });
+
+  activeOscillators.clear();
 }

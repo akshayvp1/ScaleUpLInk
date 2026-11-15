@@ -56,7 +56,7 @@ function ParticipantTile({
   const hasVideoTrack = Boolean(
     stream
       ?.getVideoTracks()
-      .some((track) => track.readyState === "live" && track.enabled)
+      .some((track) => track.readyState !== "ended" && track.enabled !== false)
   );
   const showVideo = callType === "video" && !cameraOff && hasVideoTrack;
 

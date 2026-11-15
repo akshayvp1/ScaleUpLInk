@@ -1,3 +1,4 @@
+
 import { injectable, inject } from "tsyringe";
 import { IUser } from "../../interfaces/IUser";
 import { IUserRepository } from "../entrepreneur/interface/IUserRepository";
@@ -5,7 +6,6 @@ import { Model } from "mongoose";
 
 @injectable()
 class UserRepository implements IUserRepository {
-
   private readonly model: Model<IUser>;
 
   constructor(
@@ -14,426 +14,190 @@ class UserRepository implements IUserRepository {
     this.model = model;
   }
 
-
   async createUser(userData: Partial<IUser>): Promise<IUser> {
-
     try {
-
       const newUser = new this.model({
-
         ...userData,
-
         isBlocked: false,
-
         isPremium: userData.isPremium || false,
-
-        plan: userData.plan || "free",
-
+        plan: userData.plan || { type: "free" },
         createdAt: new Date(),
-
         updatedAt: new Date(),
-
         followers: [],
-
         following: [],
-
         interests: [],
-
         savedPost: [],
-
         isActive: true,
-
 
         investorDetails:
           userData.role === "investor" && userData.investorDetails
             ? {
                 companyName:
                   userData.investorDetails.companyName || "",
-
                 companyFounded:
                   userData.investorDetails.companyFounded || undefined,
-
                 companyRegistration:
                   userData.investorDetails.companyRegistration || undefined
               }
             : undefined
       });
 
-
       await newUser.save();
 
-
-      return newUser.toObject() as IUser;
-
-
-    } catch(error){
-
-      throw new Error(
-        "Error creating user: " + error
-      );
-
+      return newUser;
+    } catch (error) {
+      throw new Error("Error creating user: " + error);
     }
-
   }
 
-
-
-  async findByEmail(
-    email:string
-  ): Promise<IUser | null>{
-
-    try{
-
-      const user = await this.model.findOne({
-        email
-      });
-
+  async findByEmail(email: string): Promise<IUser | null> {
+    try {
+      const user = await this.model.findOne({ email });
 
       return user as IUser | null;
-
-
-    }catch(error){
-
-      throw new Error(
-        "Error finding user by email: " + error
-      );
-
+    } catch (error) {
+      throw new Error("Error finding user by email: " + error);
     }
-
   }
 
-
-
-  async findUserById(
-    id:string
-  ): Promise<IUser | null>{
-
-    try{
-
-
+  async findUserById(id: string): Promise<IUser | null> {
+    try {
       const user = await this.model
         .findById(id)
         .select("-password");
 
-
-      return user as IUser | null;
-
-
-    }catch(error){
-
-      throw new Error(
-        "Error finding user by ID: " + error
-      );
-
+      return user as unknown as IUser | null;
+    } catch (error) {
+      throw new Error("Error finding user by ID: " + error);
     }
-
   }
 
-
-
-
   async addInterests(
-    email:string,
-    interests:string[],
-    profession?:string
-
-  ):Promise<IUser | null>{
-
-    try{
-
-
+    email: string,
+    interests: string[],
+    profession?: string
+  ): Promise<IUser | null> {
+    try {
       const user = await this.model.findOneAndUpdate(
-
-        {email},
-
-
+        { email },
         {
-
-          $addToSet:{
-            interests:{
+          $addToSet: {
+            interests: {
               $each: interests
             }
           },
-
-
-          ...(profession && {
-            profession
-          })
-
+          ...(profession && { profession })
         },
-
-
-        {
-          new:true
-        }
-
+        { new: true }
       ).select("-password");
 
-
-      return user as IUser | null;
-
-
-
-    }catch(error){
-
-      console.error(
-        "Error in addInterests repository:",
-        error
-      );
-
-
+      return user as unknown as IUser | null;
+    } catch (error) {
+      console.error("Error in addInterests repository:", error);
       throw error;
-
     }
-
   }
 
-
-
-
-
-  async findUserByEmail(
-    email:string
-  ):Promise<IUser | null>{
-
-
-    const user = await this.model.findOne({
-      email
-    });
-
+  async findUserByEmail(email: string): Promise<IUser | null> {
+    const user = await this.model.findOne({ email });
 
     return user as IUser | null;
-
   }
 
-
-
-
-
   async updateData(
-    data:{
-      name?:string;
-      contactNumber?:string;
-      profileImage?:string;
-      bio?:string;
-      email:string;
+    data: {
+      name?: string;
+      contactNumber?: string;
+      profileImage?: string;
+      bio?: string;
+      email: string;
     }
-
-  ):Promise<IUser | null>{
-
-
-    try{
-
-
-      if(!data.email){
-
-        throw new Error(
-          "Email is required"
-        );
-
+  ): Promise<IUser | null> {
+    try {
+      if (!data.email) {
+        throw new Error("Email is required");
       }
 
-
-
       const allowedFields = [
-
         "name",
         "contactNumber",
         "profileImage",
         "bio"
-
       ] as const;
 
+      const updateQuery: Partial<IUser> = {};
 
-
-
-      const updateQuery:Partial<IUser>={};
-
-
-
-      for(const field of allowedFields){
-
-        if(data[field]){
-
-          updateQuery[field] =
-          data[field] as any;
-
+      for (const field of allowedFields) {
+        if (data[field] !== undefined) {
+          updateQuery[field] = data[field] as never;
         }
-
       }
 
-
-
       const user = await this.model.findOneAndUpdate(
-
+        { email: data.email },
+        { $set: updateQuery },
         {
-          email:data.email
-        },
-
-
-        {
-          $set:updateQuery
-        },
-
-
-        {
-          new:true,
-          runValidators:true
+          new: true,
+          runValidators: true
         }
-
       ).select("-password");
 
-
-
-      return user as IUser | null;
-
-
-
-    }catch(error){
-
-
-      console.error(
-        "Error updateData:",
-        error
-      );
-
-
-      throw new Error(
-        "Failed to update user data"
-      );
-
-
+      return user as unknown as IUser | null;
+    } catch (error) {
+      console.error("Error updateData:", error);
+      throw new Error("Failed to update user data");
     }
-
-
   }
-
-
-
-
 
   async updatePassword(
-    email:string,
-    hashedPassword:string
-
-  ):Promise<boolean>{
-
-
-    try{
-
-
-      const user =
-      await this.model.findOneAndUpdate(
-
+    email: string,
+    hashedPassword: string
+  ): Promise<boolean> {
+    try {
+      const user = await this.model.findOneAndUpdate(
+        { email },
         {
-          email
-        },
-
-
-        {
-          $set:{
-            password:hashedPassword
+          $set: {
+            password: hashedPassword
           }
         },
-
-
         {
-          new:true,
-          runValidators:true
+          new: true,
+          runValidators: true
         }
-
       );
-
 
       return !!user;
-
-
-
-    }catch(error){
-
-
-      console.error(
-        "Error updating password:",
-        error
-      );
-
-
+    } catch (error) {
+      console.error("Error updating password:", error);
       return false;
-
-
     }
-
-
   }
-
-
-
-
-
-
 
   async changeOldPassword(
-    email:string,
-    hashedNewPassword:string
-
-  ):Promise<boolean>{
-
-
-    try{
-
-
-      const user =
-      await this.model.findOneAndUpdate(
-
+    email: string,
+    hashedNewPassword: string
+  ): Promise<boolean> {
+    try {
+      const user = await this.model.findOneAndUpdate(
+        { email },
         {
-          email
-        },
-
-
-        {
-
-          $set:{
-            password:hashedNewPassword
+          $set: {
+            password: hashedNewPassword
           }
-
         },
-
-
         {
-
-          new:true,
-          runValidators:true
-
+          new: true,
+          runValidators: true
         }
-
       );
-
-
 
       return !!user;
-
-
-
-    }catch(error){
-
-
-      console.error(
-        "Error changing password:",
-        error
-      );
-
-
+    } catch (error) {
+      console.error("Error changing password:", error);
       return false;
-
-
     }
-
-
   }
-
-
-
 }
-
 
 export default UserRepository;

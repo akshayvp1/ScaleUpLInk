@@ -846,17 +846,24 @@ export const initializeSocket = (io: Server) => {
         const call = activeCalls.get(data?.callId);
         if (!call || !call.participants.has(userId)) return;
 
-        emitToCallMembers(
-          call,
-          "call_peer_state",
-          {
-            callId: call.callId,
-            userId,
-            muted: Boolean(data.muted),
-            cameraOff: Boolean(data.cameraOff),
-          },
-          userId
-        );
+        // Only forward fields the sender actually provided. Coercing a missing
+        // field to false would incorrectly mark a peer's camera as on (or
+        // their microphone as unmuted) when the client only toggled the other
+        // control.
+        const payload: Record<string, unknown> = {
+          callId: call.callId,
+          userId,
+        };
+
+        if (typeof data.muted === "boolean") {
+          payload.muted = data.muted;
+        }
+
+        if (typeof data.cameraOff === "boolean") {
+          payload.cameraOff = data.cameraOff;
+        }
+
+        emitToCallMembers(call, "call_peer_state", payload, userId);
       }
     );
 
