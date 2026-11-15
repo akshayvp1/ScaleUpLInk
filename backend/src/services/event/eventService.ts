@@ -3,6 +3,7 @@ import IEventService from './interface/IEventService';
 import EventRepository from '../../repositories/event/eventRepository';
 import { ICreateEventDTO, EventDocument, RawEventProps } from '../../interfaces/IEvent';
 import UserRepository from '../../repositories/entrepreneur/userRepository';
+import { validateEventCreationInput } from '../../utils/eventValidation';
 @injectable()
 class EventService implements IEventService {
   constructor(
@@ -12,7 +13,8 @@ class EventService implements IEventService {
 
   async createEvent(currentUserId: string, data: ICreateEventDTO): Promise<EventDocument> {
     try {
-      return await this.eventRepository.createEvent(currentUserId, data);
+      const validated = validateEventCreationInput(data);
+      return await this.eventRepository.createEvent(currentUserId, validated);
     } catch (error) {
       console.error('Service Error creating event:', error);
       throw new Error(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);

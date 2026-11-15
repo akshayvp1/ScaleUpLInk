@@ -63,15 +63,27 @@ class SeatRepository implements ISeatRepository {
         seatLabel,
         heldBy: new Types.ObjectId(userId),
         status: "held",
+        // An expired hold must not be resurrected by extending it — the seat
+        // may already have been reclaimed or the cleanup job may be about to
+        // release it. The user has to reselect in that case.
+        holdExpiresAt: { $gt: new Date() },
       },
       { holdExpiresAt },
       { new: true }
     );
   }
 
+  // Only ever releases seats that are still in the "held" state. Without the
+  // status guard, a late release call after a successful booking could flip a
+  // paid seat back to "available" and allow it to be double-booked.
   async atomicRelease(eventId: string, seatLabels: string[], userId: string): Promise<number> {
     const result = await SeatModel.updateMany(
-      { eventId, seatLabel: { $in: seatLabels }, heldBy: new Types.ObjectId(userId) },
+      {
+        eventId,
+        seatLabel: { $in: seatLabels },
+        heldBy: new Types.ObjectId(userId),
+        status: "held",
+      },
       { status: "available", heldBy: null, holdExpiresAt: null }
     );
     return result.modifiedCount;
@@ -112,6 +124,24 @@ class SeatRepository implements ISeatRepository {
   async countAvailable(eventId: string): Promise<number> {
     return SeatModel.countDocuments({ eventId, status: "available" });
   }
+
+  async countByEvent(eventId: string): Promise<number> {
+    return SeatModel.countDocuments({ eventId });
+  }
+
+  async countBookedByBooking(
+    eventId: string,
+    seatLabels: string[],
+    bookingId: string
+  ): Promise<number> {
+    return SeatModel.countDocuments({
+      eventId,
+      seatLabel: { $in: seatLabels },
+      status: "booked",
+      bookingId: new Types.ObjectId(bookingId),
+    });
+  }
+
   async findByEventAndLabels(eventId: string, seatLabels: string[]): Promise<ISeat[]> {
     try {
       return await SeatModel.find({
