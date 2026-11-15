@@ -1,13 +1,18 @@
+
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
 
 if (!projectId || !clientEmail || !privateKey) {
   throw new Error(
-    "Firebase credentials are missing. Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Render."
+    `Firebase credentials missing: ${
+      !projectId ? "FIREBASE_PROJECT_ID " : ""
+    }${!clientEmail ? "FIREBASE_CLIENT_EMAIL " : ""}${
+      !privateKey ? "FIREBASE_PRIVATE_KEY" : ""
+    }`
   );
 }
 
