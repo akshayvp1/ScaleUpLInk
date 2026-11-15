@@ -1,0 +1,60 @@
+// ─── CHANGED ────────────────────────────────────────────────────────────────
+// 1. No changes needed to logic — this file was already correct
+// 2. Confirmed: no `any` types present
+// 3. Tokens are in HttpOnly cookies — axiosInstance sends them automatically
+//    via `withCredentials: true`; this service never touches tokens directly
+// ─────────────────────────────────────────────────────────────────────────────
+
+import {api} from "../../utils/axiosInterceptor";
+import type { UserList, ChatMessage } from "../../types/chat/types";
+
+const API_BASE_URL = "/api/user";
+
+interface ServiceResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+const chatService = {
+  async getUsers(): Promise<ServiceResponse<UserList[]>> {
+    try {
+      const response = await api.shared.get(`/users-list`);
+      return {
+        success: true,
+        data: response.data.users,
+      };
+    } catch {
+      return {
+        success: false,
+        message: "Failed to fetch users",
+      };
+    }
+  },
+
+  async getMessages(receiverId: string): Promise<ServiceResponse<ChatMessage[]>> {
+    try {
+      const response = await api.chat.get(`/messages/${receiverId}`);
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    } catch {
+      return {
+        success: false,
+        message: "Failed to fetch messages",
+      };
+    }
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await api.shared.post(`${API_BASE_URL}/logout`);
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  },
+};
+
+export default chatService;

@@ -1,29 +1,30 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
+import prettierConfig from "eslint-config-prettier";
 
-export default [
+export default tseslint.config(
   {
-    ignores: ["node_modules", "dist", "public", "uploads"], 
+    ignores: ["node_modules", "dist", "public", "uploads"],
   },
+  pluginJs.configs.recommended,
+  ...tseslint.configs.recommended,
+  prettierConfig,
   {
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: { ...globals.browser, ...globals.node },
     },
-    plugins: {
-      prettier: require("eslint-plugin-prettier"),
-      "@typescript-eslint": tseslint.plugin,
-    },
     rules: {
-      "prettier/prettier": "error",
       "no-console": "off",
+      "no-useless-catch": "warn",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
-    extends: [
-      "eslint:recommended",
-      "plugin:prettier/recommended",
-      ...tseslint.configs.recommended,
-    ],
-  },
-];
+  }
+);

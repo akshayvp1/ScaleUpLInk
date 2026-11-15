@@ -1,7 +1,8 @@
-import { Card, CardContent } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Card } from "../ui/card";
+import { Button } from "../ui/button";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
+import BusinessImage from "../../assets/business.jpg";
 
 export default function PricingCard() {
   const plans = [
@@ -45,66 +46,68 @@ export default function PricingCard() {
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-primary/[0.06] via-background to-background p-4">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-4xl"
+        className="w-full max-w-5xl"
       >
-        <Card className="overflow-hidden border-0 shadow-lg">
+        <Card className="overflow-hidden rounded-2xl border-border/70 shadow-soft">
           <div className="grid grid-cols-1 md:grid-cols-2">
             {/* Left Side - Illustration */}
-            <div className="bg-white p-6 flex items-center justify-center">
+            <div className="flex items-center justify-center bg-muted/40 p-6">
               <img
-                src="/src/assets/business.jpg"
+                src={BusinessImage}
                 alt="Collaboration Illustration"
-                className="max-w-full h-auto"
+                className="h-auto max-w-full"
               />
             </div>
 
             {/* Right Side - Pricing Plans */}
-            <div className="bg-white p-6">
-              <h1 className="text-2xl font-bold text-center mb-2">Select Your Plan</h1>
-              <p className="text-gray-500 text-center text-sm mb-4">
-                Connect with professionals, investors & community
+            <div className="bg-card p-6 sm:p-8">
+              <h1 className="mb-2 text-center text-2xl font-bold text-foreground [font-family:var(--font-display)]">Select Your Plan</h1>
+              <p className="mb-6 text-center text-sm text-muted-foreground">
+                Connect with professionals, investors &amp; community
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
+              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {plans.map((plan, index) => (
                   <div
                     key={index}
-                    className={`p-4 w-full sm:w-30 lg:w-34 rounded-lg border ${
+                    className={`w-full rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft ${
                       plan.highlighted
-                        ? "border-orange-500 bg-slate-800 text-white"
-                        : "border-gray-200 bg-slate-800 text-white"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/40"
+                        : "border-border bg-card"
                     }`}
                   >
-                    <div className="text-center mb-3">
-                      <h2 className="text-sm font-semibold">{plan.title}</h2>
+                    <div className="mb-3 text-center">
+                      <h2 className="text-sm font-semibold text-foreground">{plan.title}</h2>
                       <div className="flex items-baseline justify-center">
-                        <span className="text-xs">₹</span>
-                        <span className="text-lg font-bold">{plan.price}</span>
-                        <span className="ml-1 text-xs text-gray-400">/{plan.period.toLowerCase()}</span>
+                        <span className="text-xs text-muted-foreground">₹</span>
+                        <span className="text-lg font-bold text-foreground">{plan.price}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          /{plan.period.toLowerCase()}
+                        </span>
                       </div>
                     </div>
 
                     <Button
-                      className={`w-full text-xs ${
-                        plan.highlighted
-                          ? "bg-orange-500 hover:bg-orange-600"
-                          : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                      } rounded-full h-8 mb-3`}
+                      variant={plan.highlighted ? "default" : "outline"}
+                      size="sm"
+                      className="mb-3 w-full rounded-full text-xs"
                     >
                       {plan.buttonText}
                     </Button>
 
-                    <p className="text-xs font-medium mb-2">Features</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Features
+                    </p>
                     <ul className="space-y-2">
                       {plan.features.map((feature, idx) => (
                         <li key={idx} className="flex items-center text-xs">
-                          <Check className="h-3 w-3 mr-2 text-blue-400" />
-                          <span className="text-gray-300">{feature}</span>
+                          <Check className="mr-2 size-3 shrink-0 text-success" />
+                          <span className="text-muted-foreground">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -112,9 +115,9 @@ export default function PricingCard() {
                 ))}
               </div>
 
-              <div className="text-center mt-4 text-xs text-gray-500">
+              <div className="mt-6 text-center text-xs text-muted-foreground">
                 Already have an account?{" "}
-                <a href="/login" className="text-blue-600 hover:underline">
+                <a href="/login" className="font-medium text-primary hover:underline">
                   Log In
                 </a>
               </div>

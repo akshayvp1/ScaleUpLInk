@@ -1,49 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../redux/app/store";
+import { Briefcase, Check, TrendingUp } from "lucide-react";
+import { toast } from "react-hot-toast";
+
+import { Button } from "../ui/button";
+import { AuthLayout } from "../auth/AuthLayout";
+import { AuthHeader } from "../auth/AuthHeader";
+import { RootState, store } from "../../redux/app/store";
 import { setTempUser } from "../../redux/features/auth/tempSlice";
 import { UserRole } from "../../types/auth/auth.types";
-import { store } from "../../redux/app/store";
-import { toast } from "react-hot-toast";
 import authService from "../../services/user/authService";
-
+import { cn } from "../../lib/utils";
 
 type Role = "entrepreneur" | "investor" | "admin";
+
+const roleOptions = [
+  {
+    value: "entrepreneur" as const,
+    title: "Entrepreneur",
+    description: "I want to showcase my business and find investors.",
+    icon: Briefcase,
+  },
+  {
+    value: "investor" as const,
+    title: "Investor",
+    description: "I want to discover and invest in promising businesses.",
+    icon: TrendingUp,
+  },
+];
 
 export default function RoleSelectionPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  
+
   const tempUser = useSelector((state: RootState) => state.tempUser.tempUser);
 
-  interface EntrepreneurRegistrationForm {
-    name:string,
-    email:string,
-    role:string,
-  }
-  console.log("Temp User Email:", tempUser?.email);
-  
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
-    console.log("Role selected:", role);
   };
 
   const handleContinue = async () => {
     if (!selectedRole) return;
-  
+
     setIsLoading(true);
-  
+
     try {
       const currentTempUser = store.getState().tempUser.tempUser;
 
-      console.log("bbbbbb",currentTempUser?.token)
-  
       dispatch(
         setTempUser({
           tempUser: {
@@ -52,31 +59,29 @@ export default function RoleSelectionPage() {
           },
         })
       );
-  
-      console.log("Action dispatched. Current selected role:", selectedRole);
-  
+
       toast.success("Your profession has been selected successfully!", {
         duration: 3000,
         position: "top-right",
         style: {
-          background: "#333",
-          color: "#fff",
+          background: "var(--card)",
+          color: "var(--card-foreground)",
           borderRadius: "8px",
         },
       });
-  
+
       if (selectedRole === "investor") {
-        navigate("/investor-register");
+        navigate("/investor/investor-register");
       } else if (selectedRole === "entrepreneur") {
         const userData = {
           name: tempUser?.name,
           email: tempUser?.email,
-          role: selectedRole as UserRole
+          role: selectedRole as UserRole,
         };
-  
+
         try {
           await authService.entrepeneruRole(userData);
-          navigate('/profession')
+          navigate("/profession");
         } catch (error) {
           console.error("Error updating role:", error);
           toast.error("Failed to assign role. Please try again.");
@@ -89,110 +94,86 @@ export default function RoleSelectionPage() {
       setIsLoading(false);
     }
   };
-  
-
-  const userr = useSelector((state: RootState) => state.tempUser.tempUser);
-  console.log(userr, "LLLL");
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
+    <AuthLayout contentClassName="max-w-lg">
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl shadow-lg overflow-hidden"
+        transition={{ duration: 0.35 }}
+        className="space-y-6"
       >
-        <div className="hidden md:flex items-center justify-center bg-white p-8">
-          <img src="src/assets/business.jpg" alt="Role Selection" className="max-w-xs" />
+        <AuthHeader
+          title="Choose your role"
+          description="Select how you want to use ScaleUp Link. You can update this later."
+        />
+
+        <div className="space-y-3" role="radiogroup" aria-label="Role">
+          {roleOptions.map(({ value, title, description, icon: Icon }) => {
+            const selected = selectedRole === value;
+
+            return (
+              <motion.button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => handleRoleSelect(value)}
+                className={cn(
+                  "focus-visible:ring-ring/50 flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-colors outline-none focus-visible:ring-[3px]",
+                  selected
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40 hover:bg-accent/40"
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                    selected
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">{title}</span>
+                  <span className="text-muted-foreground mt-1 block text-sm">
+                    {description}
+                  </span>
+                </span>
+
+                <span
+                  className={cn(
+                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input"
+                  )}
+                >
+                  {selected && <Check className="size-3" />}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
-        <Card className="w-full p-6 border rounded-none">
-          <CardContent className="space-y-6">
-            <h2 className="text-2xl font-bold text-center">Choose Your Role</h2>
-            <p className="text-center text-gray-600">
-              Select how you want to use our platform
-            </p>
-            
-            <div className="space-y-4 pt-4">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                onClick={() => handleRoleSelect("entrepreneur")}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedRole === "entrepreneur" 
-                    ? "border-orange-500 bg-orange-50" 
-                    : "border-gray-200 hover:border-orange-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-5 h-5 rounded-full border mr-3 ${
-                    selectedRole === "entrepreneur" 
-                      ? "border-orange-500 bg-orange-500" 
-                      : "border-gray-300"
-                  }`}>
-                    {selectedRole === "entrepreneur" && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-white"></div>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Entrepreneur</h3>
-                    <p className="text-sm text-gray-500">
-                      I want to showcase my business and find investors
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                onClick={() => handleRoleSelect("investor")}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedRole === "investor" 
-                    ? "border-orange-500 bg-orange-50" 
-                    : "border-gray-200 hover:border-orange-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-5 h-5 rounded-full border mr-3 ${
-                    selectedRole === "investor" 
-                      ? "border-orange-500 bg-orange-500" 
-                      : "border-gray-300"
-                  }`}>
-                    {selectedRole === "investor" && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-white"></div>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Investor</h3>
-                    <p className="text-sm text-gray-500">
-                      I want to discover and invest in promising businesses
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-            
-            <Button
-              onClick={handleContinue}
-              disabled={!selectedRole || isLoading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-full mt-6 flex items-center justify-center"
-            >
-              {isLoading ? (
-                <span className="animate-spin border-2 border-white border-t-transparent rounded-full w-5 h-5"></span>
-              ) : (
-                "Continue"
-              )}
-            </Button>
-            
-            <div className="text-center text-sm text-gray-500 pt-2">
-              ScaleUp Link{" "}
-              
-            </div>
-          </CardContent>
-        </Card>
+
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={handleContinue}
+          disabled={!selectedRole}
+          loading={isLoading}
+        >
+          Continue
+        </Button>
+
+        <p className="text-muted-foreground text-center text-xs">
+          You can change your role from your account settings.
+        </p>
       </motion.div>
-    </div>
+    </AuthLayout>
   );
 }

@@ -1,0 +1,52 @@
+
+
+
+
+import { Request, Response, NextFunction } from "express";
+import IAuthService from "../../services/entrepreneur/interface/IAuthService";
+import IInvestorService from "../../services/investor/interface/IInvestorService";
+import { ITokenPayload } from "../../utils/jwt";
+import { IAdminAuthService } from "../../services/admin/interface/IAdminAuthService";
+
+export const checkUserStatus = (
+  authService: IAuthService,
+  investorService: IInvestorService,
+  adminAuthService:IAdminAuthService
+) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = req.user as ITokenPayload;
+
+      if (!user || !user.id) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return;
+      }
+
+      let isBlocked = true;
+
+      if (user.role === "entrepreneur") {
+        isBlocked = await authService.checkActiveStatus(user.id);
+      } else if (user.role === "investor") {
+        isBlocked = await investorService.checkActiveStatus(user.id);
+      }else if(user.role==="admin"){
+        isBlocked = await adminAuthService.checkActiveStatus(user.id);
+      }
+
+      if (!isBlocked) {
+        
+        res.clearCookie("refreshToken", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        });
+        res.status(403).json({ success: false, message: "User is Blocked" });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: "User is Active" });
+    } catch (error) {
+      console.error("Error in checkUserStatus:", error);
+      next(error);
+    }
+  };
+};

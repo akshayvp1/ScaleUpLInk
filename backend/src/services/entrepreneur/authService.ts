@@ -6,9 +6,15 @@ import redisClient from "../../config/redisConfig";
 import { sendOTPEmail } from "../../utils/emailService";
 import { inject, injectable } from "tsyringe";
 import UserRepository from "../../repositories/entrepreneur/userRepository";
-import { generateTokens,ITokenPayload } from "../../utils/jwt";
+import {
+  generatePasswordResetToken,
+  generateToken,
+  ITokenPayload,
+  verifyPasswordResetToken,
+} from "../../utils/jwt";
 import { OAuth2Client } from "google-auth-library";
 import { googleSignInResult } from "../../services/entrepreneur/interface/IAuthService";
+import { sanitizeUser } from "../../utils/sanitizeUser";
 
 
 @injectable()
@@ -23,7 +29,6 @@ class AuthService implements IAuthService {
     }
 
     const otp = randomInt(100000, 999999).toString();
-    console.log(otp,"otp")
     const otpData = {
       otp,
       userData: { ...userData },
@@ -42,7 +47,6 @@ class AuthService implements IAuthService {
 
       const parsedData = JSON.parse(userData);
       const newOtp = randomInt(100000, 999999).toString();
-      console.log(newOtp,"NewOtp")
       parsedData.otp = newOtp;
 
       await redisClient.set(email, JSON.stringify(parsedData), { EX: 300 });
@@ -63,6 +67,10 @@ class AuthService implements IAuthService {
       if (!user) {
         return { isMatch: false, message: "User not found." };
       }
+
+      if (!user.password) {
+        return { isMatch: false, message: "Incorrect password." };
+      }
   
       const isMatch: boolean = await bcrypt.compare(password, user.password);
       if (!isMatch) {
@@ -75,14 +83,14 @@ class AuthService implements IAuthService {
         role: user.role,
       };
   
-      const { accessToken, refreshToken } = generateTokens(payload);
+      const { accessToken, refreshToken } = generateToken(payload);
   
       return {
         isMatch: true,
         message: "Verification complete",
         accessToken,
-        refreshToken, 
-        user,
+        refreshToken,
+        user: sanitizeUser(user) as IUser,
       };
     } catch (error) {
       throw new Error(`Failed to verify user: ${(error as Error).message}`);
@@ -116,9 +124,14 @@ class AuthService implements IAuthService {
         };
     
 
-        const { accessToken, refreshToken } = generateTokens(payload);
+        const { accessToken, refreshToken } = generateToken(payload);
 
-        return { user, accessToken, refreshToken, partialUser };
+        return {
+          user: sanitizeUser(user) as IUser,
+          accessToken,
+          refreshToken,
+          partialUser,
+        };
       }
 
       const newUser = {
@@ -126,7 +139,6 @@ class AuthService implements IAuthService {
         name: payload.given_name,
         profileImage: payload.picture,
       };
-      console.log(newUser)
 
       await redisClient.set(`google:${newUser.email}`, JSON.stringify(newUser), { EX: 300 });
 
@@ -143,7 +155,6 @@ class AuthService implements IAuthService {
     try {
       const storedData = await redisClient.get(email);
       if (!storedData) throw new Error("OTP not found or expired.");
-         console.log(storedData,"dddddddjjjjjj")
       const tempData = JSON.parse(storedData);
       if (tempData.otp !== otp || Date.now() > tempData.expiresAt) {
         throw new Error("Invalid or expired OTP.");
@@ -160,67 +171,13 @@ class AuthService implements IAuthService {
       const newUser = await this.userRepository.createUser(userData as IUser);
       await redisClient.del(email);
 
-      return { user: newUser };
+      return { user: sanitizeUser(newUser) as IUser };
     } catch (error: any) {
       throw new Error("OTP verification failed.");
     }
   }
 
-  async completeProfile(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
-    try {
-        const { userData } = input;
-        if (!userData) {
-            throw new Error("Invalid input: userData is missing");
-        }
-        console.log("Received User Data:", userData);
 
-        const googleDataString = await redisClient.get(`google:${userData.email}`);
-        
-        const googleData = googleDataString ? JSON.parse(googleDataString) : null;
-
-        console.log("Google Data:", googleData);
-
-        const updatedUserData: Partial<IUser> = {
-            ...googleData,   
-            ...userData,     
-            isBlocked: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-
-        console.log("Updated User Data:", updatedUserData);
-
-        if (!updatedUserData.email || !updatedUserData.name) {
-            console.error("Validation Error: Missing required fields", updatedUserData);
-            throw new Error("Email and Name are required to complete profile.");
-        }
-        const createdUser = await this.userRepository.createUser(updatedUserData as IUser);
-        if (!createdUser) {
-            throw new Error("Failed to create user");
-        }
-
-        console.log("Created User:", createdUser);
-
-        // Generate tokens
-        const jwtPayload: ITokenPayload = {
-            id: createdUser._id!.toString(),
-            email: createdUser.email,
-            role: createdUser.role,
-        };
-
-        const { accessToken, refreshToken } = generateTokens(jwtPayload);
-
-        if (googleData) {
-            await redisClient.del(`google:${userData.email}`);
-        }
-
-        return { user: createdUser, accessToken, refreshToken };
-
-    } catch (error) {
-        console.error("Complete Profile Error:", error);
-        throw new Error(`Failed to complete profile: ${(error as Error).message}`);
-    }
-}
 
 
 async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
@@ -230,13 +187,10 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
           throw new Error("Invalid input: userData is missing");
       }
 
-      console.log("Received User Data:", userData);
-
       const googleDataString = await redisClient.get(`google:${userData.email}`);
       
       const googleData = googleDataString ? JSON.parse(googleDataString) : null;
 
-      console.log("Google Data:", googleData);
       const updatedUserData: Partial<IUser> = {
           ...googleData,   
           ...userData,    
@@ -245,10 +199,7 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
           updatedAt: new Date(),
       };
 
-      console.log("Updated User Data:", updatedUserData);
-
       if (!updatedUserData.email || !updatedUserData.name) {
-          console.error("Validation Error: Missing required fields", updatedUserData);
           throw new Error("Email and Name are required to complete profile.");
       }
 
@@ -257,21 +208,23 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
           throw new Error("Failed to create user");
       }
 
-      console.log("Created User:", createdUser);
-
       const jwtPayload: ITokenPayload = {
           id: createdUser._id!.toString(),
           email: createdUser.email,
           role: createdUser.role,
       };
 
-      const { accessToken, refreshToken } = generateTokens(jwtPayload);
+      const { accessToken, refreshToken } = generateToken(jwtPayload);
 
       if (googleData) {
           await redisClient.del(`google:${userData.email}`);
       }
 
-      return { user: createdUser, accessToken, refreshToken };
+      return {
+        user: sanitizeUser(createdUser) as IUser,
+        accessToken,
+        refreshToken,
+      };
 
   } catch (error) {
       console.error("Complete Profile Error:", error);
@@ -279,7 +232,179 @@ async setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: 
   }
 }
 
+async checkActiveStatus(id:string):Promise<boolean>{
+  try{
+    const user = await this.userRepository.findUserById(id)
+    if(!user){
+      throw new Error("error")
+    }
+    return user.isActive
+  }catch(error){
+    throw error
+  }
+}
+async addInterests(
+  data: {
+    email?: string;
+    profession?: string;
+    interest?: string[];
+  },
+  user?: ITokenPayload
+): Promise<IUser | null> {
+  const email = user?.email;
+
+  if (!email) {
+    throw new Error("Unauthorized");
+  }
+
+  const interests = data.interest?.filter(
+    interest => interest && interest.trim() !== ''
+  );
+
+
+  const existingUser = await this.userRepository.findUserByEmail(email);
+  if (!existingUser) {
+    throw new Error('User not found');
+  }
+
+  // Add interests
+  return await this.userRepository.addInterests(
+    email, 
+    interests || [], 
+    data.profession
+  );
+}
+async updateData(
+  data: {
+    name?: string;
+    contactNumber?: string;
+    profileImage?: string;
+    bio?: string;
+    email?: string;
+  },
+  user?: ITokenPayload
+): Promise<IUser | null> {
+  const email = user?.email;
+  if (!email) {
+    throw new Error("Unauthorized");
+  }
+
+  const existingUser = await this.userRepository.findUserByEmail(email);
+  if (!existingUser) {
+    throw new Error("User not found");
+  }
+
+  return await this.userRepository.updateData({ ...data, email });
+}
+async getUserById(id: string): Promise<IUser | null> {
+  return await this.userRepository.findUserById(id);
+}
+async getUser(userId: string): Promise<IUser | null> {
+  try {
+    return await this.userRepository.findUserById(userId);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null; 
+  }
+}
+async otpForgotPassword(email: string): Promise<boolean> {
+  try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+          console.log("User not found");
+          return false;
+      }
+
+      const newOtp = randomInt(100000, 999999).toString();
+
+      const parsedData = { otp: newOtp };
+
+      await redisClient.set(email, JSON.stringify(parsedData), { EX: 300 });
+      await sendOTPEmail(email, newOtp); 
+
+      return true;
+  } catch (error) {
+      console.error("Error in otpForgotPassword:", error);
+      return false;
+  }
+ 
+}
+async verifyForgotOtp(email: string, otp: string): Promise<string | null> {
+  try {
+      const storedData = await redisClient.get(email);
+      if (!storedData) {
+          return null;
+      }
+
+      const tempData = JSON.parse(storedData);
+
+      if (tempData.otp !== otp) {
+          return null;
+      }
+
+      await redisClient.del(email);
+      return generatePasswordResetToken(email);
+  } catch (error) {
+      console.error("Error in verifyForgotOtp:", error);
+      return null;
+  }
+}
+
+async changePassword(
+  email: string,
+  newPassword: string,
+  resetToken: string
+): Promise<boolean> {
+  try {
+      const resetPayload = await verifyPasswordResetToken(resetToken);
+      if (resetPayload.email !== email) {
+          throw new Error("Invalid password reset token");
+      }
+
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+          throw new Error("User not found");
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      const updatedUser = await this.userRepository.updatePassword(email, hashedPassword);
+      
+      return !!updatedUser;
+  } catch (error) {
+      console.error("Error in changePassword:", error);
+      return false;
+  }
+}
+async changeOldPassword(email: string, currentPassword: string, newPassword: string): Promise<boolean> {
+  try {
+    // Step 1: Get the user
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user || !user.password) {
+      throw new Error("User not found or password not set.");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return false;
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    const updated = await this.userRepository.changeOldPassword(email, hashedNewPassword);
+
+    return updated;
+  } catch (error) {
+    console.error("Error in changePassword:", error);
+    return false;
+  }
+}
+
 
 }
+
+
+
+
 
 export default AuthService;

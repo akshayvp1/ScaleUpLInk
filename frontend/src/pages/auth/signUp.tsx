@@ -1,15 +1,7 @@
-import Navbar from "../../components/navbar/navbar";
-import SingUp from '../../components/basics/singUp'
+import SignUp from "../../components/basics/singUp";
 
-import React from 'react'
-
-function auth() {
-  return (
-    <>
-        <Navbar/>
-        <SingUp/>
-    </>
-  )
+function SignUpPage() {
+  return <SignUp />;
 }
 
-export default auth
+export default SignUpPage;

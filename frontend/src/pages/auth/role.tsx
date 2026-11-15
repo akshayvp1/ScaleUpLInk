@@ -1,13 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import Role from '../../components/basics/role'
-function role() {
-  return (
-  <>
-    <Navbar/>
-    <Role/>
-  </>
-  )
+import Role from "../../components/basics/role";
+
+function RolePage() {
+  return <Role />;
 }
 
-export default role
+export default RolePage;

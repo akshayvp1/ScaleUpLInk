@@ -1,22 +1,58 @@
+
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig, AxiosError } from "axios";
 import { store } from "../redux/app/store";
 import { setToken } from "../redux/features/auth/authSlice";
 
+const SHARED_API_URL = import.meta.env.VITE_API_SHARED as string | undefined;
+
 const API_URLS = {
-  shared: import.meta.env.VITE_API_SHARED,
+  shared: SHARED_API_URL,
   investor: import.meta.env.VITE_API_INVESTOR,
   entrepreneur: import.meta.env.VITE_API_ENTREPRENEUR,
+  admin:import.meta.env.VITE_API_ADMIN,
+  stripe:import.meta.env.VITE_API_STRIPE,
+  seats:import.meta.env.VITE_API_SEATS,
+  chat:import.meta.env.VITE_API_CHAT,
+  group:
+    (import.meta.env.VITE_API_GROUP as string | undefined) ??
+    SHARED_API_URL?.replace(/\/shared\/?$/, "/group"),
 } as const;
 
 export type UserRole = keyof typeof API_URLS;
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+const REFRESH_URLS: Partial<Record<UserRole, string>> = {
+  shared: API_URLS.shared,
+  entrepreneur: API_URLS.shared,
+  investor: API_URLS.shared,
+  admin: API_URLS.admin,
+  group: API_URLS.shared,
+};
 
-const refreshAuthToken = async (role: UserRole): Promise<string | null> => {
+let isRefreshing = false;
+let refreshQueue: ((token: string) => void)[] = [];
+let refreshAttempts = 0;
+const MAX_REFRESH_ATTEMPTS = 3;
+
+const refreshAccessToken = async (role: UserRole): Promise<string | null> => {
+  const refreshUrl = REFRESH_URLS[role];
+
+  if (!refreshUrl) {
+    return null;
+  }
+
+  if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
+    console.error("Max refresh attempts reached, stopping retries");
+    isRefreshing = false;
+    refreshQueue = [];
+    store.dispatch(setToken({ token: "" }));
+    window.location.href = "/signin";
+    return null;
+  }
+
   try {
+    refreshAttempts++;
     const response = await axios.post(
-      `${API_URLS[role]}/auth/refresh-token`,
+      `${refreshUrl}/refresh-token`,
       {},
       { withCredentials: true }
     );
@@ -24,17 +60,18 @@ const refreshAuthToken = async (role: UserRole): Promise<string | null> => {
     const newToken = response.data?.accessToken;
     if (newToken) {
       store.dispatch(setToken({ token: newToken }));
-      refreshSubscribers.forEach((cb) => cb(newToken));
-      refreshSubscribers = [];
+      refreshQueue.forEach((cb) => cb(newToken));
+      refreshQueue = [];
+      refreshAttempts = 0;
       return newToken;
     }
-  } catch {
-    store.dispatch(setToken({ token: "" }));
-    window.location.href = `/${role}/signin`;
+    return null;
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+    return null;
   } finally {
     isRefreshing = false;
   }
-  return null;
 };
 
 const createAxiosInstance = (role: UserRole): AxiosInstance => {
@@ -47,7 +84,6 @@ const createAxiosInstance = (role: UserRole): AxiosInstance => {
   instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       const token = store.getState().auth.token;
-      console.log("LLLLLL",token)
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -60,29 +96,35 @@ const createAxiosInstance = (role: UserRole): AxiosInstance => {
     (response: AxiosResponse) => response,
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+      const isUnauthorized = error.response?.status === 401;
 
-      if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+      if (!originalRequest || originalRequest._retry || !isUnauthorized) {
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
         return new Promise((resolve) => {
-          refreshSubscribers.push((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+          refreshQueue.push((newToken: string) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
             resolve(instance(originalRequest));
           });
         });
       }
 
+      if (!REFRESH_URLS[role]) {
+        return Promise.reject(error);
+      }
+
       isRefreshing = true;
       originalRequest._retry = true;
 
-      const newToken = await refreshAuthToken(role);
+      const newToken = await refreshAccessToken(role);
       if (newToken) {
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return instance(originalRequest);
       }
-
+       
+      console.error("Refresh failed, rejecting request");
       return Promise.reject(error);
     }
   );
@@ -94,4 +136,11 @@ export const api = {
   shared: createAxiosInstance("shared"),
   investor: createAxiosInstance("investor"),
   entrepreneur: createAxiosInstance("entrepreneur"),
+  admin:createAxiosInstance("admin"),
+  stripe:createAxiosInstance("stripe"),
+  seats:createAxiosInstance("seats"), // Assuming seats API is under shared
+  chat:createAxiosInstance("chat"),
+  group:createAxiosInstance("group"),
 };
+
+

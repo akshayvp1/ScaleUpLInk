@@ -1,5 +1,6 @@
 
 import { IUser } from "../../../interfaces/IUser";
+import { ITokenPayload } from "../../../utils/jwt";
 
 export interface googleSignInResult {
   user?: IUser;
@@ -17,6 +18,27 @@ export default interface IAuthService {
   ): Promise<{ isMatch: boolean; message: string; accessToken?: string; user?: IUser }>;
   verifyOTP(email: string, otp: string): Promise<{ user: IUser }>;
   googleSignIn(credential:string):Promise<googleSignInResult>
-  completeProfile(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
+  
   setEntrepreneurRole(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
+  checkActiveStatus(id:string):Promise<boolean>
+  addInterests(
+    data: {
+      email?: string;
+      profession?: string;
+      interest?: string[];
+    },
+    user?: ITokenPayload
+  ): Promise<IUser | null>
+
+  updateData(
+    data: {
+      name:string,
+      contactNumber ?: string,
+      profileImage ?: string,
+      bio ?: string,
+      email?:string
+    },
+    user?: ITokenPayload
+  ): Promise<IUser | null>
+  
 }

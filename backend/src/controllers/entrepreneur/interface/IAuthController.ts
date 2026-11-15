@@ -6,7 +6,7 @@ export interface IAuthController {
   resendOtp(req: Request, res: Response): Promise<void>;
   signIn(req:Request,res:Response):Promise<void>;
   googleSignIn(req: Request, res: Response): Promise<void>;
-  completeProfile(req: Request, res: Response): Promise<void>;
   setEntrepreneurRole(req:Request,res:Response):Promise<void>;
-  addInterests(req:Request,res:Response):Promise<void>
+  addInterests (req: Request, res: Response): Promise<void>
+  updateData(req:Request,res:Response):Promise<void>
 }
