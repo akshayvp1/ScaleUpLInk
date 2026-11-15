@@ -3,15 +3,30 @@ import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig, AxiosE
 import { store } from "../redux/app/store";
 import { setToken } from "../redux/features/auth/authSlice";
 
+const SHARED_API_URL = import.meta.env.VITE_API_SHARED as string | undefined;
+
 const API_URLS = {
-  shared: import.meta.env.VITE_API_SHARED,
+  shared: SHARED_API_URL,
   investor: import.meta.env.VITE_API_INVESTOR,
   entrepreneur: import.meta.env.VITE_API_ENTREPRENEUR,
   admin:import.meta.env.VITE_API_ADMIN,
-  stripe:import.meta.env.VITE_API_STRIPE
+  stripe:import.meta.env.VITE_API_STRIPE,
+  seats:import.meta.env.VITE_API_SEATS,
+  chat:import.meta.env.VITE_API_CHAT,
+  group:
+    (import.meta.env.VITE_API_GROUP as string | undefined) ??
+    SHARED_API_URL?.replace(/\/shared\/?$/, "/group"),
 } as const;
 
 export type UserRole = keyof typeof API_URLS;
+
+const REFRESH_URLS: Partial<Record<UserRole, string>> = {
+  shared: API_URLS.shared,
+  entrepreneur: API_URLS.shared,
+  investor: API_URLS.shared,
+  admin: API_URLS.admin,
+  group: API_URLS.shared,
+};
 
 let isRefreshing = false;
 let refreshQueue: ((token: string) => void)[] = [];
@@ -19,6 +34,12 @@ let refreshAttempts = 0;
 const MAX_REFRESH_ATTEMPTS = 3;
 
 const refreshAccessToken = async (role: UserRole): Promise<string | null> => {
+  const refreshUrl = REFRESH_URLS[role];
+
+  if (!refreshUrl) {
+    return null;
+  }
+
   if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
     console.error("Max refresh attempts reached, stopping retries");
     isRefreshing = false;
@@ -30,16 +51,14 @@ const refreshAccessToken = async (role: UserRole): Promise<string | null> => {
 
   try {
     refreshAttempts++;
-    console.log(`Refresh attempt ${refreshAttempts}/${MAX_REFRESH_ATTEMPTS}`);
     const response = await axios.post(
-      `${API_URLS[role]}/refresh-token`,
+      `${refreshUrl}/refresh-token`,
       {},
       { withCredentials: true }
     );
 
     const newToken = response.data?.accessToken;
     if (newToken) {
-      console.log("New token received:", newToken);
       store.dispatch(setToken({ token: newToken }));
       refreshQueue.forEach((cb) => cb(newToken));
       refreshQueue = [];
@@ -65,11 +84,8 @@ const createAxiosInstance = (role: UserRole): AxiosInstance => {
   instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       const token = store.getState().auth.token;
-      console.log("Attaching token to request:", token);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        console.log("No token found in store for request:", config.url);
       }
       return config;
     },
@@ -95,6 +111,10 @@ const createAxiosInstance = (role: UserRole): AxiosInstance => {
         });
       }
 
+      if (!REFRESH_URLS[role]) {
+        return Promise.reject(error);
+      }
+
       isRefreshing = true;
       originalRequest._retry = true;
 
@@ -117,7 +137,10 @@ export const api = {
   investor: createAxiosInstance("investor"),
   entrepreneur: createAxiosInstance("entrepreneur"),
   admin:createAxiosInstance("admin"),
-  stripe:createAxiosInstance("stripe")
+  stripe:createAxiosInstance("stripe"),
+  seats:createAxiosInstance("seats"), // Assuming seats API is under shared
+  chat:createAxiosInstance("chat"),
+  group:createAxiosInstance("group"),
 };
 
 

@@ -1,7 +1,3 @@
-
-
-
-
 export enum UserRole {
     INVESTOR = "investor",
     ADMIN = "admin",
@@ -9,6 +5,7 @@ export enum UserRole {
   }
   
   export interface IUser {
+    _id?: string;
     id?: string;
     name?: string | null;
     email: string;

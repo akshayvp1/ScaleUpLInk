@@ -1,13 +1,7 @@
-import React from 'react'
-import SignIn from '../../components/admin/auth/signin'
-import Navbar from '../../components/navbar/navbar'
-function signin() {
-  return (
-    <>
-    <Navbar/>
-    <SignIn/>
-    </>
-  )
+import SignIn from "../../components/admin/auth/signin";
+
+function AdminSignInPage() {
+  return <SignIn />;
 }
 
-export default signin
+export default AdminSignInPage;

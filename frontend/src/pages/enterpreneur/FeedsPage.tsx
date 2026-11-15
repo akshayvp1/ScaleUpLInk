@@ -1,13 +1,7 @@
-import React from 'react'
-// import Navbar from '../../components/navbar/navbar'
-import Feeds from '../../components/basics/feeds'
-function ageCard() {
-  return (
-    <div>
-    {/* <Navbar/> */}
-    <Feeds/>
-    </div>
-  )
+import Feeds from "../../components/basics/feeds";
+
+function FeedsPage() {
+  return <Feeds />;
 }
 
-export default ageCard
+export default FeedsPage;

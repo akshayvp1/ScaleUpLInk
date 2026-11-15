@@ -1,14 +1,7 @@
-import React from 'react'
-import NewsFeed from '../../components/basics/newsFeed'
-import { ModeToggle } from '../../components/mode-toggle'
+import NewsFeed from "../../components/basics/newsFeed";
 
-function newsFeed() {
-  return (
-    <>
-   <ModeToggle/>
-   <NewsFeed/>
-    </>
-  )
+function NewsFeedPage() {
+  return <NewsFeed />;
 }
 
-export default newsFeed
+export default NewsFeedPage;

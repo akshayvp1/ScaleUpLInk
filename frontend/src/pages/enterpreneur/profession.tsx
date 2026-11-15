@@ -1,13 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import Profession from '../../components/entrepreneur/selectProfession'
-function profession() {
-  return (
-    <div>
-      <Navbar/>
-      <Profession/>
-    </div>
-  )
+import Profession from "../../components/entrepreneur/selectProfession";
+
+function ProfessionPage() {
+  return <Profession />;
 }
 
-export default profession
+export default ProfessionPage;

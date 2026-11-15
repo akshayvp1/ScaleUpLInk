@@ -3,12 +3,15 @@ import {
   X, 
   ImagePlus, 
   Hash, 
-  Send 
+  Send,
+  ArrowLeft,
+  Loader2,
+  ImageIcon,
+  Film
 } from 'lucide-react';
 import postService from '../../services/post/postService'
 import Cropper, { Point, Area } from 'react-easy-crop';
 import { toast } from "react-hot-toast";
-import { store } from '../../redux/app/store';
 
 
 // Assuming postService is imported or defined elsewhere
@@ -25,6 +28,8 @@ interface CreatePostModalProps {
   onClose: () => void;
   onPost?: (post: Post) => void;
 }
+
+const STEPS: Array<'gallery' | 'crop' | 'caption'> = ['gallery', 'crop', 'caption'];
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) => {
   const [step, setStep] = useState<'gallery' | 'crop' | 'caption'>('gallery');
@@ -88,7 +93,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
     }
   };
 
-  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+  const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -203,10 +208,12 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
     });
   };
 
+  const currentStepIndex = STEPS.indexOf(step);
+
   const renderGalleryStep = () => (
-    <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-900 text-gray-100">
+    <div className="flex flex-col items-center justify-center h-full p-6 bg-background">
       <div 
-        className="w-full max-w-md border-2 border-dashed border-gray-700 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-800 transition-colors duration-300 group"
+        className="w-full max-w-md border border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary/60 hover:bg-accent/40 transition-all duration-200 group"
         onClick={() => fileInputRef.current?.click()}
       >
         <input 
@@ -217,17 +224,19 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
           accept="image/*,video/*" // Accept both images and videos
           className="hidden"
         />
-        <ImagePlus 
-          className="mx-auto mb-4 text-gray-500 group-hover:text-gray-300 transition-colors" 
-          size={36} 
-        />
-        <p className="text-gray-300 font-semibold text-base mb-2">Upload Media</p>
-        <p className="text-sm text-gray-600">PNG, JPG, JPEG, MP4, etc.</p>
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
+          <ImagePlus 
+            className="text-muted-foreground group-hover:text-primary transition-colors duration-200" 
+            size={22} 
+          />
+        </div>
+        <p className="text-foreground font-semibold text-sm mb-1.5 tracking-tight">Upload media</p>
+        <p className="text-xs text-muted-foreground">PNG, JPG, MP4 — drag and drop or click to browse</p>
       </div>
       {selectedFiles.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-3 w-full max-w-md">
+        <div className="mt-5 grid grid-cols-3 gap-2.5 w-full max-w-md">
           {selectedFiles.map((file, index) => (
-            <div key={index} className="w-full h-24 rounded-md shadow-sm overflow-hidden">
+            <div key={index} className="relative w-full aspect-square rounded-lg overflow-hidden ring-1 ring-border">
               {file.type.startsWith('image') ? (
                 <img 
                   src={URL.createObjectURL(file)} 
@@ -241,6 +250,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
                   muted
                 />
               )}
+              <div className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                {file.type.startsWith('image') ? (
+                  <ImageIcon size={11} className="text-white" />
+                ) : (
+                  <Film size={11} className="text-white" />
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -249,8 +265,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
   );
 
   const renderCropStep = () => (
-    <div className="flex flex-col h-full bg-gray-900">
-      <div className="flex-grow relative">
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-grow relative bg-muted">
         <Cropper
           image={currentMedia || ''}
           crop={crop}
@@ -262,13 +278,16 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
           style={{ 
             containerStyle: { 
               height: '100%', 
-              width: '100%', 
-              background: '#1f2937' 
-            } 
+              width: '100%'
+            },
+            cropAreaStyle: {
+              border: '1px solid rgba(249, 115, 22, 0.6)',
+            }
           }}
         />
       </div>
-      <div className="p-3 flex items-center justify-between bg-gray-800 border-t border-gray-700">
+      <div className="px-4 py-3.5 flex items-center gap-4 bg-muted border-t border-border">
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide shrink-0">Zoom</span>
         <input 
           type="range"
           min="1"
@@ -276,11 +295,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
           step="0.1"
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
-          className="w-full mr-4 accent-gray-500"
+          className="w-full accent-primary cursor-pointer"
         />
         <button 
           onClick={handleCropImage}
-          className="text-gray-300 font-medium hover:text-gray-100 transition-colors"
+          className="shrink-0 text-sm font-semibold text-primary-foreground bg-primary px-4 py-1.5 rounded-full hover:bg-primary/90 transition-all duration-200 shadow-sm"
         >
           Next
         </button>
@@ -289,60 +308,70 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
   );
 
   const renderCaptionStep = () => (
-    <div className="flex flex-col h-full bg-gray-900">
-      <div className="flex-grow flex flex-col">
-        <div className="p-3 border-b border-gray-700">
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-grow flex flex-col overflow-y-auto">
+        <div className="p-4 border-b border-border">
           {croppedMedia && mediaType === 'image' && (
             <img 
               src={croppedMedia} 
               alt="Cropped" 
-              className="w-full h-48 object-cover rounded-md shadow-sm"
+              className="w-full h-48 object-cover rounded-lg ring-1 ring-border"
             />
           )}
           {croppedMedia && mediaType === 'video' && (
             <video 
               src={croppedMedia} 
-              className="w-full h-48 object-cover rounded-md shadow-sm"
+              className="w-full h-48 object-cover rounded-lg ring-1 ring-border"
               controls
             />
           )}
         </div>
-        <div className="p-4 flex-grow flex flex-col space-y-3">
-          <textarea 
-            placeholder="Write a caption..."
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            className="w-full h-24 p-3 bg-gray-800 text-gray-100 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 resize-none placeholder-gray-500"
-          />
-          <div className="flex items-center space-x-2">
-            <Hash className="text-gray-500" size={20} />
-            <input 
-              type="text"
-              placeholder="Add hashtags (comma-separated)..."
-              value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
-              className="w-full p-3 bg-gray-800 text-gray-100 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 placeholder-gray-500"
+        <div className="p-4 flex-grow flex flex-col space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Caption</label>
+            <textarea 
+              placeholder="Write a caption..."
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              className="w-full h-24 p-3 bg-muted text-foreground text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary/60 resize-none placeholder:text-muted-foreground transition-colors duration-150"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Hashtags</label>
+            <div className="flex items-center gap-2 px-3 bg-muted border border-border rounded-lg focus-within:ring-2 focus-within:ring-ring/40 focus-within:border-primary/60 transition-colors duration-150">
+              <Hash className="text-muted-foreground shrink-0" size={16} />
+              <input 
+                type="text"
+                placeholder="marketing, growth, launch"
+                value={hashtags}
+                onChange={(e) => setHashtags(e.target.value)}
+                className="w-full py-2.5 bg-transparent text-foreground text-sm focus:outline-none placeholder:text-muted-foreground"
+              />
+            </div>
           </div>
         </div>
       </div>
-      <div className="p-4 bg-gray-800 border-t border-gray-700 flex justify-between items-center">
+      <div className="px-4 py-3.5 bg-muted border-t border-border flex justify-between items-center">
         <button 
           onClick={handleBack}
-          className="text-gray-300 font-medium hover:text-gray-100 transition-colors"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-150 flex items-center gap-1.5"
         >
+          <ArrowLeft size={15} />
           Back
         </button>
         <button 
           onClick={handlePostCreation}
-          className="bg-gray-600 text-white px-4 py-2 rounded-full hover:bg-gray-700 transition-colors flex items-center text-sm"
+          className="bg-primary text-primary-foreground px-5 py-2 rounded-full hover:bg-primary/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={!croppedMedia || isUploading}
         >
           {isUploading ? (
-            "Uploading..."
+            <>
+              <Loader2 className="animate-spin" size={15} />
+              Uploading
+            </>
           ) : (
             <>
-              <Send className="mr-2" size={16} /> Post
+              <Send size={15} /> Post
             </>
           )}
         </button>
@@ -351,28 +380,44 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ onClose, onPost }) =>
   );
 
   return (
-    <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-md h-[550px] mx-auto flex flex-col overflow-hidden border border-gray-800">
+    <div className="bg-background mx-auto flex h-[560px] max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border shadow-2xl">
       {/* Header */}
-      <div className="flex justify-between items-center p-3 bg-gray-800 border-b border-gray-700">
+      <div className="flex justify-between items-center px-4 py-3.5 bg-muted border-b border-border">
         <button 
           onClick={handleBack}
-          className="text-gray-400 hover:text-gray-100 transition-colors"
+          className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-150"
         >
-          {step !== 'gallery' && <X size={20} />}
+          {step !== 'gallery' && <ArrowLeft size={17} />}
         </button>
-        <h2 className="text-base font-semibold text-gray-200">
-          {step === 'gallery' ? 'New Post' : step === 'crop' ? 'Crop Image' : 'Create Post'}
-        </h2>
+        <div className="flex flex-col items-center">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight">
+            {step === 'gallery' ? 'New post' : step === 'crop' ? 'Crop image' : 'Create post'}
+          </h2>
+          <div className="flex items-center gap-1 mt-1">
+            {STEPS.map((s, i) => (
+              <span
+                key={s}
+                className={`h-1 rounded-full transition-all duration-200 ${
+                  i === currentStepIndex
+                    ? 'w-4 bg-primary'
+                    : i < currentStepIndex
+                    ? 'w-1 bg-primary/50'
+                    : 'w-1 bg-border'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
         <button 
           onClick={handleClose}
-          className="text-gray-400 hover:text-gray-100 transition-colors"
+          className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-150"
         >
-          <X size={20} />
+          <X size={17} />
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-grow">
+      <div className="flex-grow min-h-0">
         {step === 'gallery' && renderGalleryStep()}
         {step === 'crop' && renderCropStep()}
         {step === 'caption' && renderCaptionStep()}

@@ -1,9 +1,5 @@
-
-
-
-
 import React, { useState } from 'react';
-import { useForm, Controller, FieldError } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -12,7 +8,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, PlusCircle, Trash2, Upload, Loader2 } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2, Upload, Loader2, ImageIcon, CheckCircle2, X, Ticket as TicketIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Switch } from '../ui/switch';
 import eventService from '../../services/event/eventService';
@@ -44,12 +40,21 @@ interface EventFormData {
 }
 
 // Utility function to safely extract error message
-const getErrorMessage = (error: any): string | undefined => {
+const getErrorMessage = (error: unknown): string | undefined => {
   if (error && typeof error === 'object' && 'message' in error) {
-    return error.message as string;
+    const message = (error as { message?: unknown }).message;
+    return typeof message === 'string' ? message : undefined;
   }
   return undefined;
 };
+
+// Small section heading used across the form for consistent visual rhythm
+const SectionHeading: React.FC<{ title: string; description?: string }> = ({ title, description }) => (
+    <div className="flex items-baseline justify-between border-b pb-3">
+    <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+    {description && <span className="text-xs text-muted-foreground">{description}</span>}
+  </div>
+);
 
 const EventForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,6 +136,10 @@ const EventForm: React.FC = () => {
     }
   };
 
+  const handleRemoveImage = (field: 'mainBanner' | 'promotionalImage') => {
+    setValue(field, '');
+  };
+
   const onSubmit = async (data: EventFormData) => {
     setIsSubmitting(true);
     try {
@@ -156,22 +165,112 @@ const EventForm: React.FC = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Shared uploader UI for the two image fields — keeps banner/promo visually identical
+  const renderImageUploader = (
+    field: 'mainBanner' | 'promotionalImage',
+    value: string,
+    isUploading: boolean,
+    label: string,
+    helperText: string,
+    hasError?: boolean
+  ) => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={field}>{label}</Label>
+        {value && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Uploaded
+          </span>
+        )}
+      </div>
+
+      <input
+        id={field}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => e.target.files?.[0] && handleFileChange(field, e.target.files[0])}
+      />
+
+      {value ? (
+        <div className="group relative overflow-hidden rounded-xl border border-border">
+          <div className="aspect-video w-full bg-muted flex items-center justify-center">
+            <img src={value} alt={`${label} preview`} className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 bg-black/30 md:bg-black/0 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => document.getElementById(field)?.click()}
+              disabled={isUploading}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              Replace
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => handleRemoveImage(field)}
+              disabled={isUploading}
+            >
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => document.getElementById(field)?.click()}
+          disabled={isUploading}
+          className={`flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 text-center transition-colors duration-200 ${
+            hasError
+              ? 'border-destructive/60 bg-destructive/5'
+              : 'border-border hover:border-primary/50 hover:bg-accent/40'
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+              <p className="text-sm font-medium text-muted-foreground">Uploading...</p>
+            </>
+          ) : (
+            <>
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Click to upload</p>
+              <p className="text-xs text-muted-foreground">{helperText}</p>
+            </>
+          )}
+        </button>
+      )}
+
+      {hasError && !value && (
+        <p className="text-destructive text-sm">{getErrorMessage(errors.mainBanner)}</p>
+      )}
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-8">
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Create New Event</CardTitle>
-            <CardDescription>Fill in the details to create your event</CardDescription>
+        <Card className="overflow-hidden rounded-2xl border-border/70 shadow-soft">
+          <CardHeader className="border-b border-border bg-muted/30">
+            <CardTitle className="text-2xl font-bold tracking-tight [font-family:var(--font-display)]">Create new event</CardTitle>
+            <CardDescription>Fill in the details below to publish your event</CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-8 pt-6">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Basic Information</h3>
+              <SectionHeading title="Basic information" />
               <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="eventTitle">Event Title</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eventTitle">Event title</Label>
                   <Input
                     id="eventTitle"
                     {...register('eventTitle', {
@@ -183,22 +282,22 @@ const EventForm: React.FC = () => {
                       validate: value => value.trim().length > 0 || 'Event title cannot be only spaces'
                     })}
                     placeholder="Enter event title"
-                    className={errors.eventTitle ? "border-red-500" : ""}
+                    className={errors.eventTitle ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.eventTitle && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.eventTitle)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.eventTitle)}</p>
                   )}
                 </div>
 
-                <div>
-                  <Label htmlFor="eventType">Event Type</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eventType">Event type</Label>
                   <Controller
                     name="eventType"
                     control={control}
                     rules={{ required: 'Event type is required' }}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="eventType" className={errors.eventType ? "border-red-500" : ""}>
+                        <SelectTrigger id="eventType" className={errors.eventType ? "border-destructive focus-visible:ring-destructive/40" : ""}>
                           <SelectValue placeholder="Select event type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -213,11 +312,11 @@ const EventForm: React.FC = () => {
                     )}
                   />
                   {errors.eventType && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.eventType)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.eventType)}</p>
                   )}
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="eventDescription">Description</Label>
                   <Textarea
                     id="eventDescription"
@@ -226,22 +325,22 @@ const EventForm: React.FC = () => {
                       validate: value => value.trim().length > 0 || 'Description cannot be only spaces'
                     })}
                     placeholder="Describe your event"
-                    className={`min-h-32 ${errors.eventDescription ? "border-red-500" : ""}`}
+                    className={`min-h-32 ${errors.eventDescription ? "border-destructive focus-visible:ring-destructive/40" : ""}`}
                   />
                   {errors.eventDescription && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.eventDescription)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.eventDescription)}</p>
                   )}
                 </div>
 
-                <div>
-                  <Label htmlFor="eventVisibility">Event Visibility</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eventVisibility">Event visibility</Label>
                   <Controller
                     name="eventVisibility"
                     control={control}
                     rules={{ required: 'Event visibility is required' }}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="eventVisibility" className={errors.eventVisibility ? "border-red-500" : ""}>
+                        <SelectTrigger id="eventVisibility" className={errors.eventVisibility ? "border-destructive focus-visible:ring-destructive/40" : ""}>
                           <SelectValue placeholder="Select visibility" />
                         </SelectTrigger>
                         <SelectContent>
@@ -252,7 +351,7 @@ const EventForm: React.FC = () => {
                     )}
                   />
                   {errors.eventVisibility && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.eventVisibility)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.eventVisibility)}</p>
                   )}
                 </div>
               </div>
@@ -260,10 +359,10 @@ const EventForm: React.FC = () => {
 
             {/* Schedule */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Schedule</h3>
+              <SectionHeading title="Schedule" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
+                <div className="space-y-1.5">
+                  <Label>Start date</Label>
                   <Controller
                     name="startDate"
                     control={control}
@@ -276,10 +375,10 @@ const EventForm: React.FC = () => {
                         <PopoverTrigger asChild>
                           <Button 
                             variant="outline" 
-                            className={`w-full justify-start text-left font-normal ${errors.startDate ? "border-red-500" : ""}`}
+                            className={`w-full justify-start text-left font-normal ${errors.startDate ? "border-destructive" : ""}`}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                            {field.value ? format(field.value, 'PPP') : <span className="text-muted-foreground">Pick a date</span>}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -288,19 +387,19 @@ const EventForm: React.FC = () => {
                             selected={field.value}
                             onSelect={(date) => field.onChange(date || new Date())}
                             disabled={(date) => date < today}
-                            initialFocus
+                            
                           />
                         </PopoverContent>
                       </Popover>
                     )}
                   />
                   {errors.startDate && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.startDate)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.startDate)}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>End Date</Label>
+                <div className="space-y-1.5">
+                  <Label>End date</Label>
                   <Controller
                     name="endingDate"
                     control={control}
@@ -313,10 +412,10 @@ const EventForm: React.FC = () => {
                         <PopoverTrigger asChild>
                           <Button 
                             variant="outline" 
-                            className={`w-full justify-start text-left font-normal ${errors.endingDate ? "border-red-500" : ""}`}
+                            className={`w-full justify-start text-left font-normal ${errors.endingDate ? "border-destructive" : ""}`}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                            {field.value ? format(field.value, 'PPP') : <span className="text-muted-foreground">Pick a date</span>}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -325,42 +424,42 @@ const EventForm: React.FC = () => {
                             selected={field.value}
                             onSelect={(date) => field.onChange(date || new Date())}
                             disabled={(date) => date < startDate}
-                            initialFocus
+                            
                           />
                         </PopoverContent>
                       </Popover>
                     )}
                   />
                   {errors.endingDate && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.endingDate)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.endingDate)}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="startTime">Start time</Label>
                   <Input
                     id="startTime"
                     type="time"
                     {...register('startTime', { required: 'Start time is required' })}
-                    className={errors.startTime ? "border-red-500" : ""}
+                    className={errors.startTime ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.startTime && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.startTime)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.startTime)}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="endingTime">End Time</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="endingTime">End time</Label>
                   <Input
                     id="endingTime"
                     type="time"
                     {...register('endingTime', {
                       validate: value => !value || (startTime && value > startTime) || 'End time must be after start time'
                     })}
-                    className={errors.endingTime ? "border-red-500" : ""}
+                    className={errors.endingTime ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.endingTime && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.endingTime)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.endingTime)}</p>
                   )}
                 </div>
               </div>
@@ -368,10 +467,10 @@ const EventForm: React.FC = () => {
 
             {/* Venue Details */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Venue Details</h3>
+              <SectionHeading title="Venue details" />
               <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="venueName">Venue Name</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="venueName">Venue name</Label>
                   <Input
                     id="venueName"
                     {...register('venueName', {
@@ -379,14 +478,14 @@ const EventForm: React.FC = () => {
                       validate: value => value.trim().length > 0 || 'Venue name cannot be only spaces'
                     })}
                     placeholder="Enter venue name"
-                    className={errors.venueName ? "border-red-500" : ""}
+                    className={errors.venueName ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.venueName && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.venueName)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.venueName)}</p>
                   )}
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="venueAddress">Address</Label>
                   <Input
                     id="venueAddress"
@@ -394,14 +493,14 @@ const EventForm: React.FC = () => {
                       validate: value => !value || value.trim().length > 0 || 'Address cannot be only spaces'
                     })}
                     placeholder="Enter street address"
-                    className={errors.venueAddress ? "border-red-500" : ""}
+                    className={errors.venueAddress ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.venueAddress && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.venueAddress)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.venueAddress)}</p>
                   )}
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
@@ -410,10 +509,10 @@ const EventForm: React.FC = () => {
                       validate: value => value.trim().length > 0 || 'City cannot be only spaces'
                     })}
                     placeholder="City"
-                    className={errors.city ? "border-red-500" : ""}
+                    className={errors.city ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.city && (
-                    <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.city)}</p>
+                    <p className="text-destructive text-sm">{getErrorMessage(errors.city)}</p>
                   )}
                 </div>
               </div>
@@ -421,28 +520,39 @@ const EventForm: React.FC = () => {
 
             {/* Ticket Details */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Ticket Details</h3>
+              <div className="flex items-baseline justify-between border-b pb-3">
+                <h3 className="text-base font-semibold text-foreground">Ticket details</h3>
                 <Button type="button" variant="outline" size="sm" onClick={addTicketType}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Ticket Type
+                  Add ticket type
                 </Button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {tickets.map((ticket, index) => (
-                  <div key={ticket.id} className="p-4 border rounded-md">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Ticket #{index + 1}</h4>
+                  <div key={ticket.id} className="rounded-xl border border-border bg-muted/30 p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <TicketIcon className="h-3.5 w-3.5" />
+                        </span>
+                        <h4 className="text-sm font-semibold text-foreground">Ticket #{index + 1}</h4>
+                      </div>
                       {tickets.length > 1 && (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => removeTicketType(ticket.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => removeTicketType(ticket.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
+                      <div className="space-y-1.5">
                         <Label htmlFor={`ticketType-${ticket.id}`}>Type</Label>
                         <Controller
                           name={`tickets.${index}.type`}
@@ -450,7 +560,7 @@ const EventForm: React.FC = () => {
                           rules={{ required: 'Ticket type is required' }}
                           render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger id={`ticketType-${ticket.id}`} className={errors.tickets?.[index]?.type ? "border-red-500" : ""}>
+                              <SelectTrigger id={`ticketType-${ticket.id}`} className={errors.tickets?.[index]?.type ? "border-destructive focus-visible:ring-destructive/40" : "bg-background"}>
                                 <SelectValue placeholder="Select ticket type" />
                               </SelectTrigger>
                               <SelectContent>
@@ -462,11 +572,11 @@ const EventForm: React.FC = () => {
                           )}
                         />
                         {errors.tickets?.[index]?.type && (
-                          <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.tickets[index].type)}</p>
+                          <p className="text-destructive text-sm">{getErrorMessage(errors.tickets[index].type)}</p>
                         )}
                       </div>
 
-                      <div>
+                      <div className="space-y-1.5">
                         <Label htmlFor={`ticketPrice-${ticket.id}`}>Price</Label>
                         <Input
                           id={`ticketPrice-${ticket.id}`}
@@ -477,15 +587,15 @@ const EventForm: React.FC = () => {
                             min: { value: 0, message: 'Price cannot be negative' },
                             valueAsNumber: true
                           })}
-                          placeholder="Enter price"
-                          className={errors.tickets?.[index]?.price ? "border-red-500" : ""}
+                          placeholder="0.00"
+                          className={`bg-background ${errors.tickets?.[index]?.price ? "border-destructive focus-visible:ring-destructive/40" : ""}`}
                         />
                         {errors.tickets?.[index]?.price && (
-                          <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.tickets[index].price)}</p>
+                          <p className="text-destructive text-sm">{getErrorMessage(errors.tickets[index].price)}</p>
                         )}
                       </div>
 
-                      <div>
+                      <div className="space-y-1.5">
                         <Label htmlFor={`ticketQuantity-${ticket.id}`}>Quantity</Label>
                         <Input
                           id={`ticketQuantity-${ticket.id}`}
@@ -496,11 +606,11 @@ const EventForm: React.FC = () => {
                             max: { value: 100, message: 'Quantity cannot exceed 100' },
                             valueAsNumber: true
                           })}
-                          placeholder="Enter quantity"
-                          className={errors.tickets?.[index]?.quantity ? "border-red-500" : ""}
+                          placeholder="0"
+                          className={`bg-background ${errors.tickets?.[index]?.quantity ? "border-destructive focus-visible:ring-destructive/40" : ""}`}
                         />
                         {errors.tickets?.[index]?.quantity && (
-                          <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.tickets[index].quantity)}</p>
+                          <p className="text-destructive text-sm">{getErrorMessage(errors.tickets[index].quantity)}</p>
                         )}
                       </div>
                     </div>
@@ -511,8 +621,14 @@ const EventForm: React.FC = () => {
 
             {/* Age Restriction */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Age Restriction</h3>
-              <div className="flex items-center space-x-2">
+              <SectionHeading title="Age restriction" />
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4">
+                <div>
+                  <Label htmlFor="ageRestriction" className="text-sm font-medium text-foreground">
+                    This event has age restrictions
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Attendees will need to confirm their age before registering</p>
+                </div>
                 <Controller
                   name="ageRestriction"
                   control={control}
@@ -524,113 +640,40 @@ const EventForm: React.FC = () => {
                     />
                   )}
                 />
-                <Label htmlFor="ageRestriction">This event has age restrictions</Label>
               </div>
             </div>
 
             {/* Event Branding */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Event Branding</h3>
+              <SectionHeading title="Event branding" description="Used across listings and promotion" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="mainBanner">Main Banner</Label>
-                  <div className={`border-2 border-dashed rounded-md p-4 text-center ${errors.mainBanner ? "border-red-500" : ""}`}>
-                    <div className="flex flex-col items-center">
-                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Drag and drop or click to upload</p>
-                      <p className="text-xs text-gray-400 mt-1">Recommended size: 1200×600px</p>
-                      <input
-                        id="mainBanner"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => e.target.files?.[0] && handleFileChange('mainBanner', e.target.files[0])}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => document.getElementById('mainBanner')?.click()}
-                        disabled={isUploadingMainBanner}
-                      >
-                        {isUploadingMainBanner ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          'Select file'
-                        )}
-                      </Button>
-                    </div>
-                    {mainBanner && (
-                      <div className="mt-2">
-                        <p className="text-sm text-green-600">Upload successful</p>
-                        <div className="mt-2 border rounded overflow-hidden h-24 flex items-center justify-center">
-                          <img src={mainBanner} alt="Banner preview" className="max-h-full object-cover" />
-                        </div>
-                      </div>
-                    )}
-                    {errors.mainBanner && (
-                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(errors.mainBanner)}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="promotionalImage">Promotional Image (Optional)</Label>
-                  <div className="border-2 border-dashed rounded-md p-4 text-center">
-                    <div className="flex flex-col items-center">
-                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Drag and drop or click to upload</p>
-                      <p className="text-xs text-gray-400 mt-1">Recommended size: 800×800px</p>
-                      <input
-                        id="promotionalImage"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => e.target.files?.[0] && handleFileChange('promotionalImage', e.target.files[0])}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => document.getElementById('promotionalImage')?.click()}
-                        disabled={isUploadingPromoImage}
-                      >
-                        {isUploadingPromoImage ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          'Select file'
-                        )}
-                      </Button>
-                    </div>
-                    {promotionalImage && (
-                      <div className="mt-2">
-                        <p className="text-sm text-green-600">Upload successful</p>
-                        <div className="mt-2 border rounded overflow-hidden h-24 flex items-center justify-center">
-                          <img src={promotionalImage} alt="Promotional preview" className="max-h-full object-cover" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {renderImageUploader(
+                  'mainBanner',
+                  mainBanner,
+                  isUploadingMainBanner,
+                  'Main banner',
+                  'Recommended size: 1200×600px',
+                  !!errors.mainBanner
+                )}
+                {renderImageUploader(
+                  'promotionalImage',
+                  promotionalImage,
+                  isUploadingPromoImage,
+                  'Promotional image (optional)',
+                  'Recommended size: 800×800px'
+                )}
               </div>
             </div>
           </CardContent>
 
-          <CardFooter className="flex justify-end space-x-4">
+          <CardFooter className="flex justify-end space-x-3 border-t border-border bg-muted/20 pt-6">
             <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={isSubmitting || isUploadingMainBanner || isUploadingPromoImage || !mainBanner}
+              className="shadow-sm"
             >
               {isSubmitting ? (
                 <>
@@ -638,7 +681,7 @@ const EventForm: React.FC = () => {
                   Creating...
                 </>
               ) : (
-                'Create Event'
+                'Create event'
               )}
             </Button>
           </CardFooter>

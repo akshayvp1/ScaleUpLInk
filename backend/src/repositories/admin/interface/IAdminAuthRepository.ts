@@ -1,4 +1,3 @@
-import { Request, Response } from "express";
 import { IAdmin } from "../../../interfaces/IAdmin";
 // import { IUser } from "../../../interfaces/IUser";
 export interface IAdminAuthRepository{

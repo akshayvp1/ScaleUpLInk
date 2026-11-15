@@ -2,6 +2,7 @@ import { inject, injectable } from "tsyringe";
 import { IAdminAuthService } from "./interface/IAdminAuthService";
 import AdminAuthRepository from "../../repositories/admin/adminAuthRepository";
 import { ITokenPayload, generateToken } from "../../utils/jwt";
+import { sanitizeUser } from "../../utils/sanitizeUser";
 import bcrypt from "bcryptjs";
 import { IAdmin } from "../../interfaces/IAdmin";
 
@@ -42,14 +43,14 @@ class AdminAuthService implements IAdminAuthService {
 
       const { accessToken, refreshToken } = generateToken(payload);
 
-      const { password: _, ...safeUser } = user;
+      const safeUser = sanitizeUser(user);
 
       return {
         isMatch: true,
         message: "Login successful.",
         accessToken,
         refreshToken,
-        user: safeUser as Omit<IAdmin, "password">,
+        user: safeUser,
       };
     } catch (error) {
       console.error("Error during signIn:", error);
@@ -59,7 +60,6 @@ class AdminAuthService implements IAdminAuthService {
   async checkActiveStatus(id: string): Promise<boolean> {
     try {
       const admin = await this.adminAuthRepository.findAdminById(id);
-      console.log(admin,"🙈🙈🙈🙈")
       if (!admin) {
         throw new Error("Admin not found");
       }

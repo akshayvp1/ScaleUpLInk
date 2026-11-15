@@ -1,26 +1,16 @@
 import { api } from '../../utils/axiosInterceptor';
-
-// Interface for user data (moved here for reusability)
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  isPremium: boolean;
-  status: 'active' | 'blocked';
-  eventsCount: number;
-  imageUrl?: string;
-}
+import { IUser } from '../../types/auth/auth.types';
 
 interface IUserManageService {
-  getUsers(): Promise<User[]>;
+  getUsers(): Promise<IUser[]>;
   unblockUser(userId: string): Promise<void>
   blockUser(userId: string): Promise<void>
 }
 
 class UserManagementService implements IUserManageService {
-    async getUsers(): Promise<User[]> {
+    async getUsers(): Promise<IUser[]> {
         try {
-          const response = await api.admin.get<User[]>('/get-users');
+          const response = await api.admin.get<IUser[]>('/get-users');
           console.log(response.data, "Users with image");
           return response.data;
         } catch (error) {

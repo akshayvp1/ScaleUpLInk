@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Users, Award, Calendar, MoreHorizontal, ArrowRight } from 'lucide-react';
+import { Calendar, MoreHorizontal, ArrowRight } from 'lucide-react';
 import { cn } from '../../../lib/utils'; // Adjust path based on your setup
 
 // TypeScript interfaces
@@ -65,58 +65,76 @@ const TopEventUsers: React.FC = () => {
   ];
 
   return (
-    <Card className="border border-border">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex items-center">
-          <Calendar className="h-5 w-5 text-indigo-600 mr-2" />
-          <CardTitle className="text-lg font-medium text-foreground">Top Event Conductors</CardTitle>
+    <Card className="border-border/70 bg-card shadow-soft">
+      <CardHeader className="flex flex-row items-start justify-between pb-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div className="space-y-1">
+            <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
+              Top event conductors
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Most active organizers this month
+            </p>
+          </div>
         </div>
-        <div className="flex items-center">
-          <button className="text-xs font-medium text-primary hover:text-primary/80 flex items-center">
-            View All <ArrowRight className="h-3 w-3 ml-1" />
-          </button>
-        </div>
+        <button className="flex items-center text-xs font-semibold text-primary transition-colors hover:text-primary/80">
+          View all <ArrowRight className="ml-1 h-3 w-3" />
+        </button>
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="space-y-4">
+        <div className="divide-y divide-border/60">
           {topUsers.map((user, index) => (
-            <div key={user.id} className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img 
-                    src={user.avatar} 
-                    alt={user.name} 
-                    className="w-10 h-10 rounded-full bg-muted"
+            <div
+              key={user.id}
+              className="flex items-center justify-between gap-3 py-3.5 first:pt-1 last:pb-1"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="relative shrink-0">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="h-10 w-10 rounded-full bg-muted object-cover ring-1 ring-border/60"
                   />
                   {index < 3 && (
                     <div className={cn(
-                      "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white",
-                      index === 0 ? "bg-amber-500" : index === 1 ? "bg-gray-400" : "bg-amber-700"
+                      "absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm",
+                      index === 0
+                        ? "bg-warning"
+                        : index === 1
+                          ? "bg-muted-foreground/60"
+                          : "bg-warning/80"
                     )}>
                       {index + 1}
                     </div>
                   )}
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {user.name}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {user.email}
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-6">
+
+              <div className="flex shrink-0 items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">{user.eventsCount}</p>
-                  <p className="text-xs text-muted-foreground">Events</p>
+                  <p className="text-sm font-semibold text-foreground">{user.eventsCount}</p>
+                  <p className="text-[11px] text-muted-foreground">Events</p>
                 </div>
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-foreground">{user.attendeeCount}</p>
-                  <p className="text-xs text-muted-foreground">Attendees</p>
+                <div className="hidden text-right sm:block">
+                  <p className="text-sm font-semibold text-foreground">{user.attendeeCount}</p>
+                  <p className="text-[11px] text-muted-foreground">Attendees</p>
                 </div>
-                <div className="text-right hidden md:block">
-                  <p className="text-sm font-medium text-muted-foreground">{user.lastEventDate}</p>
+                <div className="hidden text-right md:block">
+                  <p className="text-xs text-muted-foreground">{user.lastEventDate}</p>
                 </div>
-                <button className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+                <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               </div>

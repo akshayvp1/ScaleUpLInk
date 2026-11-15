@@ -13,6 +13,7 @@ import { Input } from "../../../components/ui/input";
 import { Badge } from "../../../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar";
 import { Lock, Unlock, Search } from "lucide-react";
+import { PageHeader } from "../../common/PageHeader";
 
 // Define types for Post
 interface Post {
@@ -54,8 +55,8 @@ const initialPosts: Post[] = [
 
 // Status badge styles
 const statusStyles = {
-  active: "bg-green-100 text-green-800",
-  blocked: "bg-red-100 text-red-800",
+  active: "bg-success/10 text-success",
+  blocked: "bg-destructive/10 text-destructive",
 };
 
 export default function PostManagement() {
@@ -91,17 +92,23 @@ export default function PostManagement() {
   };
 
   return (
-    <div className="w-full px-4 py-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Post Management</h1>
-      </div>
+    <div className="w-full space-y-6">
+      <PageHeader
+        title="Post management"
+        description="Moderate reported content and keep the community feed healthy."
+        actions={
+          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
+            {posts.length} posts
+          </Badge>
+        }
+      />
 
       <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+        <div className="relative w-full max-w-md flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search posts..."
-            className="pl-8"
+            className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -109,7 +116,65 @@ export default function PostManagement() {
         <Button variant="outline">Filter</Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="grid gap-3 md:hidden">
+        {filteredPosts.map((post) => (
+          <div
+            key={post.id}
+            className="rounded-xl border border-border/70 bg-card p-4 shadow-soft"
+          >
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={post.imageUrl} alt={post.username} />
+                <AvatarFallback>
+                  {post.username.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold text-foreground">{post.username}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.content}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge variant={post.reportCount > 10 ? "destructive" : "outline"}>
+                {post.reportCount} reports
+              </Badge>
+              <Badge className={statusStyles[post.status]}>
+                {post.status === "active" ? "Active" : "Blocked"}
+              </Badge>
+            </div>
+            <div className="mt-3">
+              {post.status === "active" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-destructive border-destructive/20 hover:bg-destructive/5"
+                  onClick={() => handleBlockUser(post.id)}
+                >
+                  <Lock className="h-4 w-4 mr-1" />
+                  Block
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-success border-success/20 hover:bg-success/5"
+                  onClick={() => handleUnblockUser(post.id)}
+                >
+                  <Unlock className="h-4 w-4 mr-1" />
+                  Unblock
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+        {filteredPosts.length === 0 && (
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            No posts found matching your search.
+          </p>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft md:block">
         <Table>
           <TableCaption>A list of all posts in the system.</TableCaption>
           <TableHeader>
@@ -152,7 +217,7 @@ export default function PostManagement() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      className="text-destructive border-destructive/20 hover:bg-destructive/5"
                       onClick={() => handleBlockUser(post.id)}
                     >
                       <Lock className="h-4 w-4 mr-1" />
@@ -162,7 +227,7 @@ export default function PostManagement() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-green-600 border-green-200 hover:bg-green-50"
+                      className="text-success border-success/20 hover:bg-success/5"
                       onClick={() => handleUnblockUser(post.id)}
                     >
                       <Unlock className="h-4 w-4 mr-1" />

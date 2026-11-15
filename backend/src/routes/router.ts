@@ -3,13 +3,18 @@ import entrepreneurRouter from '../routes/entrepreneurRouter';
 import sharedRouter from './sharedRouter';
 import investorRouter from '../routes/investorRouter'
 import adminRouter from '../routes/adminRouter'
-// import stripeRouter from '../routes/stripeRouter'
+import seatRouter from '../routes/seatRouter'
+import chatRouter from "./chatRoutes";
+import groupRouter from "./groupRouter";
 const router = express.Router();
 
 router.use('/user', entrepreneurRouter);
 router.use('/shared', sharedRouter);
 router.use('/investor',investorRouter)
 router.use('/admin',adminRouter)
-// router.use('/stripe',stripeRouter)
+router.use('/seats',seatRouter)
+router.use("/chat", chatRouter);
+router.use("/group", groupRouter);
+
 
 export default router;

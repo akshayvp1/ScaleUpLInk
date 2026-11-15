@@ -1,63 +1,16 @@
-// // src/models/bookingModel.ts
-// import { Schema, model } from "mongoose";
-// import { IBooking } from "../interfaces/IBooking";
-
-// // Ticket Subdocument Schema
-// const ticketSchema = new Schema({
-//   type: { type: String, required: true },
-//   price: { type: Number, required: true, min: 0 },
-//   quantity: { type: Number, required: true, min: 1 },
-//   usedTickets: { type: Number, required: true, min: 0, default: 0 },
-//   totalPrice: { type: Number, required: true, min: 0 },
-//   uniqueId: { type: String, required: true, unique: true },
-//   uniqueQrCode: { type: String, required: true }, 
-//   status: { type: String, required: true, enum: ['active', 'used', 'cancelled'], default: 'active' },
-// });
-
-// // Booking Schema
-// const bookingSchema = new Schema<IBooking>({
-//   bookingId: { type: String, required: true, unique: true },
-//   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-//   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
-//   tickets: {
-//     type: [ticketSchema],
-//     required: true,
-//     validate: {
-//       validator: (tickets: unknown[]) => Array.isArray(tickets) && tickets.length > 0,
-//       message: 'At least one ticket is required',
-//     },
-//   },
-//   totalAmount: { type: Number, required: true, min: 0 },
-//   discount: { type: Number, min: 0, default: 0 },
-//   coupon: { type: String, default: null },
-//   stripeSessionId: { type: String, required: true, unique: true },
-//   paymentStatus: {
-//     type: String,
-//     required: true,
-//     enum: ['pending', 'paid', 'failed', 'cancelled'],
-//     default: 'pending',
-//   },
-// }, {
-//   timestamps: true,
-// });
-
-// export const BookingsModel = model<IBooking>('Bookings', bookingSchema);
-
-
-
-
-
 // src/models/bookingModel.ts
 import { Schema, model } from "mongoose";
 import { IBooking, ITicket } from "../interfaces/IBooking";
 
-// Ticket Subdocument Schema
+// One ticket per booked seat — seatLabel/row/number/category/price are
+// copied from the seat at booking time so the ticket stays historically
+// accurate even if the event's seat pricing changes later.
 const ticketSchema = new Schema<ITicket>({
-  type: { type: String, required: true },
+  seatLabel: { type: String, required: true },
+  row: { type: String, required: true },
+  number: { type: Number, required: true },
+  category: { type: String, required: true },
   price: { type: Number, required: true, min: 0 },
-  quantity: { type: Number, required: true, min: 1 },
-  usedTickets: { type: Number, required: true, min: 0, default: 0 },
-  totalPrice: { type: Number, required: true, min: 0 },
   uniqueId: { type: String, required: true, unique: true },
   uniqueQrCode: { type: String, required: true },
   status: {
@@ -68,7 +21,6 @@ const ticketSchema = new Schema<ITicket>({
   },
 });
 
-// Booking Schema
 const bookingSchema = new Schema<IBooking>({
   bookingId: { type: String, required: true, unique: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -88,11 +40,16 @@ const bookingSchema = new Schema<IBooking>({
   paymentStatus: {
     type: String,
     required: true,
-    enum: ['pending', 'paid', 'failed', 'cancelled','refunded'],
+    enum: ['pending', 'paid', 'failed', 'cancelled', 'refunded'],
     default: 'pending',
   },
 }, {
   timestamps: true,
 });
+
+bookingSchema.index({ userId: 1, createdAt: -1 });
+bookingSchema.index({ userId: 1, paymentStatus: 1 });
+bookingSchema.index({ eventId: 1, paymentStatus: 1 });
+bookingSchema.index({ paymentStatus: 1, updatedAt: 1 });
 
 export const BookingsModel = model<IBooking>('Bookings', bookingSchema);

@@ -1,13 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import CreateNewPassword from '../../components/basics/createNewPassword'
-function createNewPassword() {
-  return (
-    <>
-    <Navbar/>
-    <CreateNewPassword/>
-    </>
-  )
+import CreateNewPassword from "../../components/basics/createNewPassword";
+
+function CreateNewPasswordPage() {
+  return <CreateNewPassword />;
 }
 
-export default createNewPassword
+export default CreateNewPasswordPage;

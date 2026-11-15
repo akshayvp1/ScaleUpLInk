@@ -5,6 +5,11 @@ import { IStory } from "../interfaces/IStory";
 const StorySchema = new Schema<IStory>({
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     media: { type: String, required: true },
+    mediaType: {
+      type: String,
+      enum: ["image", "video"],
+      default: "image",
+    },
     caption: { type: String, trim: true },
     viewers: [{ type: Schema.Types.ObjectId, ref: "User" }],
     duration: { type: Number, required: true, default: 15 },
@@ -13,6 +18,7 @@ const StorySchema = new Schema<IStory>({
 });
 
 StorySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+StorySchema.index({ userId: 1, createdAt: -1 });
 
 const StoryModel = mongoose.model<IStory>("Story", StorySchema);
 export default StoryModel;

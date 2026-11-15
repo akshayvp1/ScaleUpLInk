@@ -1,13 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import Otp from '../../components/basics/otp'
-function otp() {
-  return (
-    <>
-      <Navbar/>
-      <Otp/>
-    </>
-  )
+import Otp from "../../components/basics/otp";
+
+function OtpPage() {
+  return <Otp />;
 }
 
-export default otp
+export default OtpPage;

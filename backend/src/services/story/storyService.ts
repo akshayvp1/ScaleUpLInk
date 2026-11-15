@@ -9,13 +9,24 @@ import UserModel from '../../models/userModel';
 class StoryService implements IStoryService {
   constructor(@inject('StoryRepository') private storyRepository: IStoryRepository) {}
 
-  async addStory(userId: string, media: string, caption?: string): Promise<IStory> {
+  async addStory(
+    userId: string,
+    media: string,
+    caption?: string,
+    mediaType?: 'image' | 'video'
+  ): Promise<IStory> {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       throw new Error('Invalid user ID');
     }
 
     const objectId = new mongoose.Types.ObjectId(userId);
-    return await this.storyRepository.createStory({ userId: objectId, media, caption });
+    const type = mediaType === 'video' ? 'video' : 'image';
+    return await this.storyRepository.createStory({
+      userId: objectId,
+      media,
+      caption,
+      mediaType: type,
+    });
   }
 
   async getUserStories(userId: string): Promise<IStory[]> {

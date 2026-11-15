@@ -2,11 +2,7 @@ import { injectable, inject } from "tsyringe";
 import { Request, Response } from "express";
 import { IPaymentController } from "./interface/IPaymentController";
 import PaymentService from "../../services/payment/paymentService";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-    apiVersion: "2022-11-15",
-  });
+import stripe from "../../config/stripe";
 
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
@@ -17,13 +13,10 @@ class PaymentController implements IPaymentController {
     ) {}
 
     createPaymentIntent = async (req: Request, res: Response): Promise<void> => {
-        
         try {
-            const { eventId, amount, isRetry, paymentIntentId } = req.body;
-            console.log(req.body,"fdsmlfdkslfdslkfdslkfdls;kk;ll🤷‍♂️🤷‍♂️;")
-            console.log(eventId,"hhhhhhhhh💕💕💕")
+            const { eventId, seats, isRetry, paymentIntentId } = req.body;
             const userId = req.user?.id;
-            console.log(eventId,paymentIntentId,"❤️")
+
             if (!userId) {
                 res.status(401).json({
                     success: false,
@@ -32,14 +25,23 @@ class PaymentController implements IPaymentController {
                 return;
             }
 
+            if (!Array.isArray(seats) || seats.length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'At least one seat is required.',
+                });
+                return;
+            }
+
+            const seatLabels: string[] = seats.map((s: { seatLabel: string }) => s.seatLabel);
+
             const paymentIntent = await this.paymentService.createPaymentIntent(
                 eventId,
                 userId,
-                amount,
+                seatLabels,
                 isRetry,
                 paymentIntentId
             );
-            console.log(paymentIntent,"🤣🤣🤣🤣")
 
             res.status(200).json({
                 success: true,
@@ -79,50 +81,112 @@ class PaymentController implements IPaymentController {
             });
         }
     };
-    verifyPayment = async(req:Request,res:Response):Promise<void>=>{
-        try{
-          const {paymentIntentId}=req.params;
-          console.log(paymentIntentId,"dddd")
-          const payment = await this.paymentService.verifyPayment(paymentIntentId as string)
 
-          if(!payment){
-            res.status(400).json({
-                success:false,
-                message:'payment not found'
-            })
+    verifyPayment = async (req: Request, res: Response): Promise<void> => {
+        try {
+          const { paymentIntentId } = req.params;
+          const userId = req.user?.id;
+
+          if (!userId) {
+            res.status(401).json({
+                success: false,
+                message: 'User not authenticated',
+            });
+            return;
           }
-          res.status(200).json({success:true,payment})
-        }catch(error){
-            console.log(error)
+
+          const payment = await this.paymentService.verifyPayment(
+            paymentIntentId as string,
+            userId
+          );
+
+          if (!payment) {
+            res.status(404).json({
+                success: false,
+                message: 'Payment not found'
+            });
+            return;
+          }
+          res.status(200).json({ success: true, payment });
+        } catch (error: any) {
+            console.error("Error verifying payment:", error);
+            const message = error.message || "Failed to verify payment";
+            const status =
+                message === "Payment not found"
+                    ? 404
+                    : message === "Payment does not belong to you"
+                        ? 403
+                        : 500;
+            res.status(status).json({
+                success: false,
+                message: status === 500 ? "Failed to verify payment" : message,
+            });
         }
-    }
-    // findPayment = async(req:Request,res:Response):Promise<void>=>{
-    //     try{
-    //       const userId = req.user?.id
-    //       if(!userId){
-    //         res.status(401).json({
-    //             success:false,
-    //             message:"user not authenticated"
-    //         })
-    //         return 
-    //       }
-    //       const response = await this.paymentService.findPayments(userId)
-    //       if(!response){
-    //         res.status(404).json({
-    //             success:false,
-    //             message:"Not found any data"
-    //         })
-    //       }
-    //       res.status(200).json({
-    //         success:true,
-    //         message:'Payment list generated successfully',
-    //         payments:response
-    //       })
-    //     }catch(error){
-    //         console.log(error)
-    //     }
-    // }
+    };
+
+    // Called by the frontend right after verifyPayment confirms
+    // paymentStatus === "paid". The service independently re-checks that
+    // before touching any seat, so this endpoint is safe even if called
+    // directly without a real payment.
+   confirmSeatsBooked = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { eventId, seatLabels, bookingId } = req.body;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: 'User not authenticated',
+                });
+                return;
+            }
+
+            if (!eventId || !Array.isArray(seatLabels) || seatLabels.length === 0 || !bookingId) {
+                res.status(400).json({
+                    success: false,
+                    message: 'eventId, seatLabels, and bookingId are required.',
+                });
+                return;
+            }
+
+            const booking = await this.paymentService.confirmSeatsBooked(eventId, seatLabels, userId, bookingId);
+
+            res.status(200).json({ success: true, booking });
+        } catch (error: any) {
+            console.error('Error confirming seats as booked:', error);
+            res.status(409).json({
+                success: false,
+                message: error.message || 'Failed to confirm seats as booked.',
+            });
+        }
+    };
+    getBookingDetails = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { bookingId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: 'User not authenticated',
+                });
+                return;
+            }
+
+            const details = await this.paymentService.getBookingDetails(
+                bookingId as string,
+                userId
+            );
+
+            res.status(200).json({ success: true, booking: details });
+        } catch (error: any) {
+            console.error('Error fetching booking details:', error);
+            res.status(404).json({
+                success: false,
+                message: error.message || 'Booking not found.',
+            });
+        }
+    };
 }
 
 export default PaymentController;
-

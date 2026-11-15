@@ -1,8 +1,7 @@
 import { IStory } from '../../../interfaces/IStory';
-import mongoose from 'mongoose';
 
 export interface IStoryService {
-  addStory(userId: string, media: string, caption?: string): Promise<IStory> 
+  addStory(userId: string, media: string, caption?: string, mediaType?: 'image' | 'video'): Promise<IStory> 
   getUserStories(userId: string): Promise<IStory[]>;
   getFollowedUsersStories(currentUserId: string): Promise<IStory[]> 
   addStoryViewers(StoryOwner:string,user:string):Promise<void>

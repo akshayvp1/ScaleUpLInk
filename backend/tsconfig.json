@@ -1,36 +1,44 @@
 {
   "compilerOptions": {
-    "target": "ES2022",                 
-    "module": "CommonJS",                
-    "lib": ["ES2022", "DOM"],            
-    "outDir": "./dist",                  
-    "rootDir": "./src",                  
-    "strict": true,                      
-    "moduleResolution": "node",          
-    "esModuleInterop": true,             
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "lib": ["ES2022", "DOM"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    "strict": true,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,                
-    "resolveJsonModule": true,           
-    "allowJs": false,                    
-    "checkJs": false,                    
-    "noImplicitAny": true,               
-    "noImplicitThis": true,              
-    "strictNullChecks": true,            
-    "strictFunctionTypes": true,         
-    "strictBindCallApply": true,         
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    "allowJs": false,
+    "checkJs": false,
+
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
     "strictPropertyInitialization": true,
-    "noUnusedLocals": true,              
-    "noUnusedParameters": true,          
-    "noFallthroughCasesInSwitch": true,  
-    "noUncheckedIndexedAccess": true,    
-    "useUnknownInCatchVariables": true,  
-    "incremental": true,                 
-    "noEmit": false,                     
-    "declaration": true,                 
-    "sourceMap": true   ,
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "useUnknownInCatchVariables": true,
+
+    "incremental": true,
+    "noEmit": false,
+    "declaration": true,
+    "sourceMap": true,
+
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true                 
+    "emitDecoratorMetadata": true
   },
-  "include": ["src"],                    
-  "exclude": ["node_modules", "dist"]    
+
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

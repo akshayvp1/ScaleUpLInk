@@ -21,6 +21,8 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
   const [isLoading, setIsLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  const isVideo = Boolean(file && file.type.startsWith('video/'));
+
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -36,6 +38,7 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
       setFile(selectedFile);
       setPreviewUrl(URL.createObjectURL(selectedFile));
       setCrop(undefined); // Reset crop when new file is selected
+      setCompletedCrop(null);
     }
   };
 
@@ -93,15 +96,21 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
   };
 
   const handleSubmit = async () => {
-    if (!file || !imgRef.current || !completedCrop) {
+    if (!file) {
+      alert('Please select a photo or video for your story');
+      return;
+    }
+
+    if (!isVideo && (!imgRef.current || !completedCrop)) {
       alert('Please select an image and complete the crop');
       return;
     }
 
     setIsLoading(true);
     try {
-      const croppedFile = await getCroppedImg(imgRef.current, completedCrop);
-      await onSubmit(croppedFile, caption);
+      // Videos are posted as-is; images go through the 9:16 crop flow.
+      const output = isVideo ? file : await getCroppedImg(imgRef.current!, completedCrop!);
+      await onSubmit(output, caption);
       handleClose();
     } catch (error) {
       console.error('Error in StoryModal handleSubmit:', error);
@@ -124,17 +133,20 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Create Story</h2>
-            <Button variant="ghost" size="icon" onClick={handleClose}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold [font-family:var(--font-display)]">Create Story</h2>
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={handleClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           {!previewUrl ? (
-            <label className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer">
-              <Upload className="h-12 w-12 text-gray-400" />
-              <span className="mt-2 text-sm text-gray-600">Upload image</span>
+            <label className="flex h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/30 transition-colors hover:border-primary/40 hover:bg-primary/5">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+                <Upload className="h-6 w-6" />
+              </span>
+              <span className="mt-3 text-sm font-medium text-foreground">Upload a photo or video</span>
+              <span className="mt-1 text-xs text-muted-foreground">PNG, JPG, GIF or MP4</span>
               <Input
                 type="file"
                 accept="image/*,video/*"
@@ -144,21 +156,31 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
             </label>
           ) : (
             <div className="space-y-4">
-              <ReactCrop
-                crop={crop}
-                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                onComplete={(c: PixelCrop) => setCompletedCrop(c)}
-                aspect={9 / 16}
-                className="max-h-[533px] w-full"
-              >
-                <img
-                  ref={imgRef}
+              {isVideo ? (
+                <video
                   src={previewUrl}
-                  alt="Story preview"
-                  onLoad={handleImageLoad}
-                  style={{ maxWidth: '100%', maxHeight: '533px', objectFit: 'contain' }}
+                  controls
+                  autoPlay
+                  muted
+                  className="max-h-[60dvh] w-full rounded-xl bg-black sm:max-h-[533px]"
                 />
-              </ReactCrop>
+              ) : (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c: PixelCrop) => setCompletedCrop(c)}
+                  aspect={9 / 16}
+                  className="max-h-[60dvh] w-full sm:max-h-[533px]"
+                >
+                  <img
+                    ref={imgRef}
+                    src={previewUrl}
+                    alt="Story preview"
+                    onLoad={handleImageLoad}
+                    style={{ maxWidth: '100%', maxHeight: 'min(533px, 60dvh)', objectFit: 'contain' }}
+                  />
+                </ReactCrop>
+              )}
               <Input
                 placeholder="Add a caption..."
                 value={caption}
@@ -169,7 +191,11 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onSubmi
           )}
 
           {previewUrl && (
-            <Button onClick={handleSubmit} disabled={isLoading || !completedCrop}>
+            <Button
+              onClick={handleSubmit}
+              disabled={isLoading || (!isVideo && !completedCrop)}
+              className="w-full"
+            >
               {isLoading ? 'Posting...' : 'Post Story'}
             </Button>
           )}

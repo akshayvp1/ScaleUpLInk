@@ -20,9 +20,9 @@ const SimpleAccordion: React.FC<{
   return (
     <div className="w-full space-y-2">
       {items.map((item, index) => (
-        <div key={index} className="border border-slate-200 rounded-md overflow-hidden">
+        <div key={index} className="border border-border rounded-md overflow-hidden">
           <button
-            className="w-full p-4 flex justify-between items-center text-left text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            className="w-full p-4 flex justify-between items-center text-left text-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => toggleItem(index)}
           >
             <span className="font-medium">{item.title}</span>
@@ -44,7 +44,7 @@ const SimpleAccordion: React.FC<{
             </svg>
           </button>
           {openItem === index && (
-            <div className="p-4 pt-0 text-slate-600 bg-white border-t border-slate-100">
+            <div className="p-4 pt-0 text-muted-foreground bg-card border-t border-border">
               {item.content}
             </div>
           )}
@@ -137,10 +137,10 @@ const PaymentFailed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-orange-50">
+      <div className="flex min-h-dvh w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mb-4"></div>
-          <p className="text-slate-600">Loading payment details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Loading payment details...</p>
         </div>
       </div>
     );
@@ -162,20 +162,20 @@ const PaymentFailed: React.FC = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-white to-orange-50 p-4 md:p-6">
+    <div className="min-h-dvh w-full bg-background p-4 md:p-6">
       <div className="max-w-3xl mx-auto">
-        <Card className="shadow-lg overflow-hidden mb-6">
-          <div className="bg-red-500 h-1 w-full"></div>
+        <Card className="mb-6 overflow-hidden border-border/70 shadow-soft">
+          <div className="h-1 w-full bg-destructive"></div>
           <CardContent className="p-8 text-center">
-            <div className="bg-red-100 p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-              <XCircle className="h-10 w-10 text-red-500" />
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 ring-8 ring-destructive/5">
+              <XCircle className="h-10 w-10 text-destructive" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Payment Failed</h2>
-            <p className="text-slate-600 mb-6">
+            <h2 className="mb-2 text-2xl font-bold text-foreground [font-family:var(--font-display)]">Payment Failed</h2>
+            <p className="text-muted-foreground mb-6">
               We were unable to process your payment for this event.
             </p>
             {errorDetails && (
-              <div className="inline-block bg-red-50 border border-red-100 px-4 py-3 rounded-lg text-red-700 font-medium mb-6 max-w-md mx-auto">
+              <div className="mx-auto mb-6 inline-block max-w-md rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 font-medium text-destructive">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-5 w-5" />
                   <span className="font-bold">{errorDetails.code.replace('_', ' ')}</span>
@@ -184,16 +184,16 @@ const PaymentFailed: React.FC = () => {
                 <p className="text-sm mt-2">{errorDetails.resolution}</p>
               </div>
             )}
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Reference ID: <span className="font-medium">{paymentId}</span>
             </p>
           </CardContent>
         </Card>
 
         {event && (
-          <Card className="shadow-lg overflow-hidden mb-6">
-            <CardHeader className="p-4 border-b border-slate-100">
-              <CardTitle className="text-lg font-semibold text-slate-800">
+          <Card className="mb-6 overflow-hidden border-border/70 shadow-soft">
+            <CardHeader className="border-b border-border p-4">
+              <CardTitle className="text-lg font-semibold text-foreground">
                 Your Order
               </CardTitle>
             </CardHeader>
@@ -206,28 +206,28 @@ const PaymentFailed: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-bold text-slate-800">{event.eventTitle}</h3>
-                    <Badge className="bg-orange-100 text-orange-600 border-orange-200 hover:bg-orange-200">
+                    <h3 className="text-lg font-bold text-foreground">{event.eventTitle}</h3>
+                    <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
                       {event.eventType}
                     </Badge>
                   </div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     Your tickets are not reserved. Please try again to secure your spot.
                   </p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="border-t border-slate-100 p-4 flex flex-wrap gap-3 justify-between">
+            <CardFooter className="border-t border-border p-4 flex flex-wrap gap-3 justify-between">
               <Button
                 variant="outline"
-                className="border-slate-200 text-slate-700"
+                className="border-border text-foreground"
                 onClick={() => navigate(-1)}
               >
                 <ArrowLeftCircle className="h-4 w-4 mr-2" />
                 Back to Checkout
               </Button>
               <Button
-                className="bg-orange-500 hover:bg-orange-600 text-white"
+                className="bg-primary hover:bg-primary/90 text-white"
                 onClick={() => navigate(`/checkout?event=${eventId}`)}
               >
                 <RefreshCcw className="h-4 w-4 mr-2" />
@@ -237,10 +237,10 @@ const PaymentFailed: React.FC = () => {
           </Card>
         )}
 
-        <Card className="shadow-lg overflow-hidden">
-          <CardHeader className="p-4 border-b border-slate-100">
-            <CardTitle className="text-lg font-semibold flex items-center text-slate-800">
-              <HelpCircle className="h-5 w-5 mr-2 text-orange-500" />
+        <Card className="overflow-hidden border-border/70 shadow-soft">
+          <CardHeader className="border-b border-border p-4">
+            <CardTitle className="text-lg font-semibold flex items-center text-foreground">
+              <HelpCircle className="h-5 w-5 mr-2 text-primary" />
               Frequently Asked Questions
             </CardTitle>
           </CardHeader>
@@ -248,8 +248,8 @@ const PaymentFailed: React.FC = () => {
             <SimpleAccordion items={faqItems} />
             <Separator className="my-6" />
             <div className="text-center">
-              <p className="text-slate-600 mb-4">Need help with your payment?</p>
-              <Button variant="link" className="text-orange-500 hover:text-orange-600">
+              <p className="text-muted-foreground mb-4">Need help with your payment?</p>
+              <Button variant="link" className="text-primary hover:text-primary">
                 Contact Support
               </Button>
             </div>

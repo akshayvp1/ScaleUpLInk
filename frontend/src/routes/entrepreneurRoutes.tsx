@@ -1,20 +1,12 @@
-
-import {  Routes, Route } from 'react-router-dom';
-
-import EventCreation from '../pages/enterpreneur/EventCreation'
+import { Routes, Route } from "react-router-dom";
+import Profile from "../pages/enterpreneur/profile";
 
 function App() {
   return (
-    
     <Routes>
-      
-     
-      <Route path='/event-creation' element={<EventCreation/>} />
-      
-
+      <Route path="profile" element={<Profile />} />
     </Routes>
-    
-  )
+  );
 }
 
-export default App
+export default App;

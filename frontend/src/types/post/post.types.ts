@@ -1,29 +1,33 @@
-// import { Types } from 'mongoose';
+export interface User {
+  _id: string;
+  name: string;
+  profileImage?: string;
+}
 
 export interface Comment {
   _id?: string;
-  userId: string;
+  postId: string;
+  userId: string | User;
   commentText: string;
   createdAt: Date;
 }
 
 export interface Share {
+  sharedBy: User;
   sharedAt: Date;
-  userid: string;
 }
 
 export interface Post {
   _id?: string;
-  userid: string;
+  userid: string | User;
   content: string;
   media?: string[];
-  likes: string[];
-  comments: Comment[];
   totalShare: number;
   totalLikes: number;
+  totalComments: number;
   engagementScore: number;
   postTag?: string[];
-  shares: Share[];
+  isLiked: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

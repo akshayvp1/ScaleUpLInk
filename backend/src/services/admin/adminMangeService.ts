@@ -31,7 +31,8 @@ class AdminManageService implements IAdminManageService {
 
       await this.adminManageRepository.blockUser(userId);
     }catch(error){
-      console.log(error)
+      console.error("Error blocking user:", error);
+      throw error;
     }
   }
   async unBlockUser(userId:string):Promise<void>{
@@ -43,7 +44,8 @@ class AdminManageService implements IAdminManageService {
 
      await this.adminManageRepository.unBlockUser(userId);
     }catch(error){
-      console.log(error)
+      console.error("Error unblocking user:", error);
+      throw error;
     }
   }
   

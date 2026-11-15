@@ -1,15 +1,17 @@
-// src/routes/checkOutRoutes.tsx
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import Checkout from '../pages/enterpreneur/checkOutPage'; // Adjust path based on your project structure
+// // src/routes/checkOutRoutes.tsx
 
-function CheckoutRouter() {
-  return (
-    <Routes>
-      <Route path="checkout" element={<Checkout />} />
-      {/* Add other checkout-related routes here if needed */}
-    </Routes>
-  );
-}
+// import { Route } from "react-router-dom";
+// import Checkout from "../pages/enterpreneur/checkOutPage";
+// import PaymentDetails from "../pages/common/PaymentDetails";
+// import DashboardLayout from "../components/layouts/DashboardLayout";
 
-export default CheckoutRouter;
+// function CheckoutRouter() {
+//   return (
+//     <Route element={<DashboardLayout />}>
+//       <Route path="checkout" element={<Checkout />} />
+//       <Route path="booking/:bookingId" element={<PaymentDetails />} />
+//     </Route>
+//   );
+// }
+
+// export default CheckoutRouter;

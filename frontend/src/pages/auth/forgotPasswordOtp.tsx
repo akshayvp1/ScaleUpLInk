@@ -1,14 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import  ForgotPasswordOtp from '../../components/basics/forgotpasswordOtp'
+import ForgotPasswordOtp from "../../components/basics/forgotpasswordOtp";
 
-function forgotPasswordOtp() {
-  return (
-    <>
-    <Navbar/>
-    <ForgotPasswordOtp/>
-    </>
-  )
+function ForgotPasswordOtpPage() {
+  return <ForgotPasswordOtp />;
 }
 
-export default forgotPasswordOtp
+export default ForgotPasswordOtpPage;

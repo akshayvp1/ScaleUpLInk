@@ -1,22 +1,18 @@
-import React from "react";
-import logoNavabar from "../../assets/main-logo.png"
+import { Link } from "react-router-dom";
+
+import { Logo } from "../common/Logo";
+import { ModeToggle } from "../mode-toggle";
 
 const Navbar = () => {
   return (
-    <header className="bg-white border-b border-gray-200 relative h-24">
-      {/* Logo positioned absolutely */}
-      <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
-        <a href="/" className="block">
-          <img
-            src={logoNavabar}
-            alt="Company Logo"
-            className="h-40 w-auto"
-          />  
-        </a>
-        
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link to="/" aria-label="ScaleUp Link home" className="inline-flex items-center">
+          <Logo title="ScaleUp Link" />
+        </Link>
+        <ModeToggle />
       </div>
     </header>
-   
   );
 };
 

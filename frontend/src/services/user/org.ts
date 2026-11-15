@@ -18,20 +18,17 @@ interface IAuthServiceEntrepreneur {
 
 type SignInResult = { user: IUser };
 type MockSignUpResult = { status: number; message: string };
-type GoogleSignInResult = { partialUser?: boolean; entrepreneur?: any; accessToken?: string } | boolean;
+type GoogleSignInResult = { partialUser?: boolean; entrepreneur?: IUser; accessToken?: string } | boolean;
 
 class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   async sendOtp(credentials: FormData, role: "entrepreneur" | "investor"): Promise<MockSignUpResult> {
     try {
       const response = await api[role].post(`/send-otp`, credentials);
-      console.log(response, "frontresponse");
 
       store.dispatch(setTempUser({ tempUser: { email: credentials.get("email") as string } }));
-      console.log(response.data, "dccccc");
       return response.data;
 
     } catch (error: unknown) {
-      console.log(error);
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.message || "Failed to send OTP");
       }
@@ -41,12 +38,9 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   
   async resendOtp(email: string, role: "entrepreneur" | "investor"): Promise<MockSignUpResult> {
     try {
-      console.log(email, "credddd");
       const response = await api[role].post('/resend-otp', { email });
-      console.log("daaat", response);
       return response.data;
     } catch (error: unknown) {
-      console.log(error);
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.message || "Failed to send OTP");
       }
@@ -83,9 +77,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   async signIn(credentials: { email: string; password: string }, role: "entrepreneur" | "investor" = "entrepreneur"): Promise<SignInResult> {
     try {
       const response = await api[role].post("/signin", credentials);
-      console.log(response, "hhhh");
-      console.log(response.data.data.user.email, "fffff");
-      console.log(response.data.data.accessToken, "ddddd");
+
       store.dispatch(signIn({
         email: response.data.data.user.email,
         role: response.data.data.user.role,
@@ -104,15 +96,12 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   
   async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
     try {
-      console.log("Google Auth Credential:", credential);
-  
       const response = await api["shared"].post("/googleAuth", { credential });
       const { entrepreneur, accessToken, partialUser } = response.data;
   
       if (partialUser) {
         store.dispatch(setTempUser({ tempUser: entrepreneur }));
   
-        console.log("Partial user detected, requiring additional information.");
         return { partialUser, entrepreneur, accessToken };
       }
   

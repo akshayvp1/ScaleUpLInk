@@ -1,9 +1,9 @@
-import { Document, ObjectId } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export interface IAdmin extends Document {
-  _id: ObjectId;
+  _id: Types.ObjectId;
   email: string;
   password: string;
   role: "admin" | "entrepreneur" | "investor";
-  isActive: boolean;  // 👈 Add this
+  isActive: boolean;
 }

@@ -73,10 +73,7 @@ export interface Ticket {
 
   
   // API response for event creation
-  export interface EventResponse extends Event {
-    // Any additional fields specific to the response
-    // that aren't in the base Event interface
-  }
+  export type EventResponse = Event;
   
   // Event service interface
   export interface IEventService {

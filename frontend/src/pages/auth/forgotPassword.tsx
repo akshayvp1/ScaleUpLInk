@@ -1,14 +1,7 @@
-import React from 'react'
-import Navbar from '../../components/navbar/navbar'
-import ForgotPassword from '../../components/basics/forgotPassword'
+import ForgotPassword from "../../components/basics/forgotPassword";
 
-function forgotPassword() {
-  return (
-    <>
-    <Navbar/>
-    <ForgotPassword/>
-    </>
-  )
+function ForgotPasswordPage() {
+  return <ForgotPassword />;
 }
 
-export default forgotPassword
+export default ForgotPasswordPage;

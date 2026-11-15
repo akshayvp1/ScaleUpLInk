@@ -1,17 +1,31 @@
 // import bycrypt from 'bcryptjs'
 // import { IUser } from '../../interfaces/IUser'
-import IInvestorService from './interface/IInvestorService'
+import IInvestorService, {
+    InvestorListQuery,
+    InvestorListResponse,
+    InvestorProfileResponse,
+} from './interface/IInvestorService'
 import { inject,injectable } from 'tsyringe'
+import { Types } from "mongoose";
 import InvestorRepository from '../../repositories/investor/investorRepository'
+import ConnectionService from '../connection/connectionService';
+import {
+    buildInvestorSummary,
+    buildUserView,
+} from "../../utils/userVisibility";
 import { generateToken,ITokenPayload } from "../../utils/jwt";
 // import { OAuth2Client } from "google-auth-library";
 // import { googleSignInResult } from "../../services/entrepreneur/interface/IAuthService";
 import redisClient from "../../config/redisConfig";
 import { IUser } from "../../interfaces/IUser";
+import { sanitizeUser } from "../../utils/sanitizeUser";
 
 @injectable()
 class InvestorService implements IInvestorService{
-    constructor(@inject("InvestorRepository") private investorRepository:InvestorRepository){}
+    constructor(
+        @inject("InvestorRepository") private investorRepository:InvestorRepository,
+        @inject("ConnectionService") private connectionService: ConnectionService
+    ){}
    
 
     async completeProfile(input: { userData: Partial<IUser> }): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
@@ -20,11 +34,9 @@ class InvestorService implements IInvestorService{
             if (!userData) {
                 throw new Error("Invalid input: userData is missing");
             }
-            console.log("Received User Data:", userData);
 
             const googleDataString = await redisClient.get(`google:${userData.email}`);
             const googleData = googleDataString ? JSON.parse(googleDataString) : null;
-            console.log("Google Data:", googleData);
 
             const updatedUserData: Partial<IUser> = {
                 ...googleData,
@@ -42,8 +54,6 @@ class InvestorService implements IInvestorService{
                 } : undefined,
             };
 
-            console.log("Updated User Data:", updatedUserData);
-
             if (!updatedUserData.email || !updatedUserData.name) {
                 console.error("Validation Error: Missing required fields", updatedUserData);
                 throw new Error("Email and Name are required to complete profile.");
@@ -53,8 +63,6 @@ class InvestorService implements IInvestorService{
             if (!createdUser) {
                 throw new Error("Failed to create user");
             }
-
-            console.log("Created User:", createdUser);
 
             const jwtPayload: ITokenPayload = {
                 id: createdUser._id!.toString(),
@@ -68,7 +76,11 @@ class InvestorService implements IInvestorService{
                 await redisClient.del(`google:${userData.email}`);
             }
 
-            return { user: createdUser, accessToken, refreshToken };
+            return {
+                user: sanitizeUser(createdUser) as IUser,
+                accessToken,
+                refreshToken,
+            };
         } catch (error) {
             console.error("Complete Profile Error:", error);
             throw new Error(`Failed to complete profile: ${(error as Error).message}`);
@@ -86,6 +98,66 @@ class InvestorService implements IInvestorService{
           throw error
         }
       }
+
+    async listInvestors(
+        query: InvestorListQuery,
+        viewerId?: string
+    ): Promise<InvestorListResponse> {
+        const page = Math.max(1, Number(query.page) || 1);
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 12));
+        const sort =
+            query.sort === "name" || query.sort === "company"
+                ? query.sort
+                : "newest";
+
+        const excludeId =
+            viewerId && Types.ObjectId.isValid(viewerId)
+                ? viewerId
+                : undefined;
+
+        const { investors, total } = await this.investorRepository.listInvestors({
+            search: query.search,
+            sort,
+            page,
+            limit,
+            excludeId,
+        });
+
+        return {
+            investors: investors.map(buildInvestorSummary),
+            total,
+            page,
+            limit,
+            totalPages: Math.max(1, Math.ceil(total / limit)),
+        };
+    }
+
+    async getInvestorProfile(
+        viewerId: string,
+        investorId: string
+    ): Promise<InvestorProfileResponse> {
+        if (!Types.ObjectId.isValid(investorId)) {
+            throw new Error("NOT_FOUND");
+        }
+
+        const investor = await this.investorRepository.findInvestorById(investorId);
+
+        if (!investor || investor.role !== "investor" || !investor.isActive) {
+            throw new Error("NOT_FOUND");
+        }
+
+        const isSelf = viewerId === investorId;
+        const isConnected =
+            isSelf ||
+            (Types.ObjectId.isValid(viewerId) &&
+                (await this.connectionService.areConnected(viewerId, investorId)));
+
+        return {
+            user: buildUserView(investor, isConnected),
+            access: isConnected ? "full" : "limited",
+            isConnected,
+        };
+    }
 
 }
 
