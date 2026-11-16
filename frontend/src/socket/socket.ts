@@ -84,8 +84,7 @@ let currentToken: string | null = null;
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   withCredentials: true,
-  transports: ["websocket", "polling"],
-  tryAllTransports: true,
+  transports: ["websocket"],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
