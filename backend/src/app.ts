@@ -69,7 +69,7 @@ app.use(cookieParser());
 app.use("/api", fullRouter);
 app.use("/payments", payment);
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
     message: "ScaleUp Link Backend is running!",
