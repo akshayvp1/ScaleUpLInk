@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -227,9 +227,19 @@ const EventCard: React.FC<EventCardProps> = ({
               variant="outline"
               size="sm"
               className="text-xs px-2.5 h-8 text-foreground bg-card/90 border-none hover:bg-card"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                toast.success('Share link copied to clipboard!');
+                if (!id) {
+                  toast.error('This event cannot be shared yet.');
+                  return;
+                }
+                const link = `${window.location.origin}/events?eventId=${encodeURIComponent(id)}`;
+                try {
+                  await navigator.clipboard.writeText(link);
+                  toast.success('Share link copied to clipboard!');
+                } catch {
+                  toast.error('Could not copy the event link.');
+                }
               }}
               aria-label="Share event"
             >
@@ -271,6 +281,7 @@ const EventCard: React.FC<EventCardProps> = ({
 
 export const EventGallery: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<EventProps[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -351,24 +362,21 @@ export const EventGallery: React.FC = () => {
 
     try {
       const existingEvent = events.find((e) => e.id === id);
-      if (!existingEvent) {
-        throw new Error('Event not found in local state');
-      }
-      console.log('Using existing event from state:', existingEvent);
+      let formattedEvent: EventProps | null = existingEvent
+        ? { ...existingEvent }
+        : null;
 
-      let formattedEvent: EventProps = { ...existingEvent };
       try {
         const eventDetails: RawEventProps = await eventService.getEventById(id);
-        console.log('Event details fetched (getEventById):', eventDetails);
-
         const detailsId = resolveId(eventDetails);
         const detailsTitle = resolveTitle(eventDetails);
+
         if (detailsId && detailsTitle) {
           formattedEvent = {
             id: detailsId,
             user_id: eventDetails.user_id,
-            userName: eventDetails.userName || existingEvent.userName || 'Event Host',
-            userImage: eventDetails.userImage || existingEvent.userImage || '',
+            userName: eventDetails.userName || existingEvent?.userName || 'Event Host',
+            userImage: eventDetails.userImage || existingEvent?.userImage || '',
             eventTitle: detailsTitle,
             eventDescription: resolveDescription(eventDetails),
             eventType: eventDetails.type as 'Conference' | 'Concert' | 'Workshop' | 'Exhibition' | 'Meetup' | 'Party',
@@ -388,14 +396,15 @@ export const EventGallery: React.FC = () => {
             createdAt: eventDetails.createdAt,
             updatedAt: eventDetails.updatedAt,
           };
-        } else {
-          console.warn('getEventById returned invalid data, using existing event');
         }
       } catch (apiError) {
-        console.warn('getEventById failed, using existing event:', apiError);
+        console.warn('getEventById failed, using cached event:', apiError);
       }
 
-      console.log('Formatted event for modal:', formattedEvent);
+      if (!formattedEvent) {
+        throw new Error('Event not found');
+      }
+
       setSelectedEvent(formattedEvent);
       setIsModalOpen(true);
     } catch (error) {
@@ -403,6 +412,21 @@ export const EventGallery: React.FC = () => {
       toast.error('Failed to load event details. Please try again.');
     }
   };
+
+  const deepLinkEventId = searchParams.get('eventId');
+
+  useEffect(() => {
+    if (!deepLinkEventId) return;
+
+    handleViewDetails(deepLinkEventId);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('eventId');
+    setSearchParams(next, { replace: true });
+    // Only react to the deep-link id itself; clearing the query string above
+    // intentionally reruns with a null id and stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkEventId]);
 
   const handleCreateEvent = () => {
     navigate('/event-create');

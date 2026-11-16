@@ -11,6 +11,7 @@ const ALLOWED_TYPES: ChatMessageType[] = [
   "file",
   "sticker",
   "post",
+  "event",
 ];
 
 /**
@@ -52,6 +53,16 @@ export const normalizeChatPayload = (
     }
 
     return { text, type, postId };
+  }
+
+  if (type === "event") {
+    const eventId = raw.eventId?.trim();
+
+    if (!eventId || !/^[a-f\d]{24}$/i.test(eventId)) {
+      throw new Error("Invalid event");
+    }
+
+    return { text, type, eventId };
   }
 
   const fileUrl = raw.fileUrl?.trim();

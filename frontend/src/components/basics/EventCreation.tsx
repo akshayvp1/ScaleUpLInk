@@ -85,6 +85,7 @@ const EventForm: React.FC = () => {
   const tickets = watch('tickets');
   const startDate = watch('startDate');
   const startTime = watch('startTime');
+  const endingDate = watch('endingDate');
   const mainBanner = watch('mainBanner');
   const promotionalImage = watch('promotionalImage');
 
@@ -164,6 +165,36 @@ const EventForm: React.FC = () => {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const sameCalendarDay = (a: Date, b: Date) =>
+    format(a, 'yyyy-MM-dd') === format(b, 'yyyy-MM-dd');
+
+  const validateStartTime = (value: string) => {
+    if (!value) return 'Start time is required';
+    if (!startDate) return true;
+
+    const [hours, minutes] = value.split(':').map(Number);
+    const startsAt = new Date(startDate);
+    startsAt.setHours(hours || 0, minutes || 0, 0, 0);
+
+    return startsAt.getTime() > Date.now()
+      ? true
+      : 'Start time must be in the future';
+  };
+
+  const validateEndingTime = (value: string) => {
+    if (!value) return true;
+    if (!startTime || !endingDate || !startDate) return true;
+
+    if (
+      sameCalendarDay(endingDate, startDate) &&
+      value <= startTime
+    ) {
+      return 'End time must be after start time on the same day';
+    }
+
+    return true;
+  };
 
   // Shared uploader UI for the two image fields — keeps banner/promo visually identical
   const renderImageUploader = (
@@ -440,7 +471,7 @@ const EventForm: React.FC = () => {
                   <Input
                     id="startTime"
                     type="time"
-                    {...register('startTime', { required: 'Start time is required' })}
+                    {...register('startTime', { validate: validateStartTime })}
                     className={errors.startTime ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />
                   {errors.startTime && (
@@ -454,7 +485,7 @@ const EventForm: React.FC = () => {
                     id="endingTime"
                     type="time"
                     {...register('endingTime', {
-                      validate: value => !value || (startTime && value > startTime) || 'End time must be after start time'
+                      validate: validateEndingTime
                     })}
                     className={errors.endingTime ? "border-destructive focus-visible:ring-destructive/40" : ""}
                   />

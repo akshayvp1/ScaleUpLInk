@@ -17,6 +17,8 @@ payment.post('/create-payment-intent', authenticate, activeCheck, paymentControl
 payment.post("/webhook", paymentController.handleWebhook.bind(paymentController));
 payment.get("/verify-payment/:paymentIntentId", authenticate, activeCheck, paymentController.verifyPayment.bind(paymentController));
 payment.post("/confirm-seats-booked", authenticate, activeCheck, paymentController.confirmSeatsBooked.bind(paymentController));
+payment.get("/ticket/:qrCode", authenticate, activeCheck, paymentController.verifyTicket.bind(paymentController));
+payment.post("/ticket/:qrCode/check-in", authenticate, activeCheck, paymentController.checkInTicket.bind(paymentController));
 payment.get("/booking/:bookingId", authenticate, activeCheck, paymentController.getBookingDetails.bind(paymentController));
 
 export default payment;

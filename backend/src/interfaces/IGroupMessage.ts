@@ -1,7 +1,7 @@
 import { Document, Types } from "mongoose";
-import { ChatMessageType } from "./IMessage";
+import { ChatEventPreview, ChatMessageType } from "./IMessage";
 
-export interface IGroupMessage extends Document {
+export interface IGroupMessage extends Document, ChatEventPreview {
   groupId: Types.ObjectId;
   senderId: Types.ObjectId;
   text: string;

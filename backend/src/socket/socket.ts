@@ -171,6 +171,7 @@ export const initializeSocket = (io: Server) => {
             fileSize: data.fileSize,
             mimeType: data.mimeType,
             postId: data.postId,
+            eventId: data.eventId,
           });
 
           const payload = {
@@ -188,6 +189,13 @@ export const initializeSocket = (io: Server) => {
             postContent: saved.postContent,
             postMedia: saved.postMedia,
             postAuthorName: saved.postAuthorName,
+            eventId: saved.eventId,
+            eventTitle: saved.eventTitle,
+            eventImage: saved.eventImage,
+            eventStartDate: saved.eventStartDate,
+            eventStartTime: saved.eventStartTime,
+            eventVenue: saved.eventVenue,
+            eventCity: saved.eventCity,
             seen: false,
             createdAt: saved.createdAt,
           };
@@ -203,7 +211,9 @@ export const initializeSocket = (io: Server) => {
                 const preview =
                   saved.type === "post"
                     ? "shared a post"
-                    : (saved.text ?? "").slice(0, 120);
+                    : saved.type === "event"
+                      ? "shared an event"
+                      : (saved.text ?? "").slice(0, 120);
 
                 await notificationService.notifyMessage(
                   userId,
@@ -294,6 +304,7 @@ export const initializeSocket = (io: Server) => {
               fileSize: data.fileSize,
               mimeType: data.mimeType,
               postId: data.postId,
+              eventId: data.eventId,
             }
           );
           const memberIds = await groupService.getGroupMemberIds(data.groupId, userId);
@@ -332,7 +343,9 @@ export const initializeSocket = (io: Server) => {
               const preview =
                 saved.type === "post"
                   ? "shared a post"
-                  : (saved.text ?? "").slice(0, 120);
+                  : saved.type === "event"
+                    ? "shared an event"
+                    : (saved.text ?? "").slice(0, 120);
 
               await Promise.all(
                 memberIds

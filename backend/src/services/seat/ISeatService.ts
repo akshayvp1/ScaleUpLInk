@@ -18,7 +18,8 @@ export interface ISeatService {
   getSeatsForEvent(eventId: string): Promise<ISeat[]>;
   generateSeatsForEvent(
     eventId: string,
-    rows: { row: string; count: number; category: string; price: number }[]
+    rows: { row: string; count: number; category: string; price: number }[],
+    requester?: { id: string; role?: string }
   ): Promise<ISeat[]>;
   holdSeats(eventId: string, seatLabels: string[], userId: string): Promise<HoldResult>;
   extendHold(eventId: string, seatLabels: string[], userId: string): Promise<ExtendHoldResult>;

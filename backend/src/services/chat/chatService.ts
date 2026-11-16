@@ -1,5 +1,5 @@
 import { inject, injectable } from "tsyringe";
-import { Types } from "mongoose";
+import { Model, Types } from "mongoose";
 import { IChatService } from "./interface/IChatService";
 import { IChatRepository } from "../../repositories/chat/interface/IChatRepository";
 import {
@@ -8,6 +8,7 @@ import {
 } from "../../interfaces/IMessage";
 import { IUser } from "../../interfaces/IUser";
 import { IConnection } from "../../interfaces/IConnection";
+import { EventDocument } from "../../interfaces/IEvent";
 import ConnectionService from "../connection/connectionService";
 import { IPostRepository } from "../../repositories/post/interface/IPostRepository";
 import { normalizeChatPayload } from "../../utils/chatPayload";
@@ -31,7 +32,10 @@ class ChatService implements IChatService {
     private connectionService: ConnectionService,
 
     @inject("PostRepository")
-    private postRepository: IPostRepository
+    private postRepository: IPostRepository,
+
+    @inject("EventModel")
+    private eventModel: Model<EventDocument>
   ) {}
 
   async saveMessage(
@@ -66,6 +70,29 @@ class ChatService implements IChatService {
       }
 
       payload = { ...payload, ...preview };
+    }
+
+    if (payload.type === "event" && payload.eventId) {
+      const event = await this.eventModel
+        .findById(payload.eventId)
+        .select(
+          "eventStatus eventTitle mainBanner startDate startTime venueName city"
+        )
+        .lean();
+
+      if (!event || event.eventStatus !== "approve") {
+        throw new Error("Event not found or not available to share");
+      }
+
+      payload = {
+        ...payload,
+        eventTitle: event.eventTitle,
+        eventImage: event.mainBanner,
+        eventStartDate: new Date(event.startDate).toISOString(),
+        eventStartTime: event.startTime,
+        eventVenue: event.venueName,
+        eventCity: event.city,
+      };
     }
 
     return await this.chatRepository.saveMessage(senderId, receiverId, payload);

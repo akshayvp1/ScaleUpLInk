@@ -131,6 +131,23 @@ class EventService implements IEventService {
     }
   }
 
+  async shareEventToUsers(
+    eventId: string,
+    userIds: string[]
+  ): Promise<{ sharedCount: number }> {
+    const response = await api.shared.post<{
+      success: boolean;
+      sharedCount?: number;
+      message?: string;
+    }>(`/events/${eventId}/share-to-users`, { userIds });
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to share event");
+    }
+
+    return { sharedCount: response.data.sharedCount ?? 0 };
+  }
+
   async getPaidEvents(): Promise<RawEventProps[]> {
     try {
       const response = await api.shared.get<ApiEventResponse>('/paid-events');

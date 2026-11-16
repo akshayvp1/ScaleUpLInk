@@ -160,6 +160,73 @@ class PaymentController implements IPaymentController {
             });
         }
     };
+    verifyTicket = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { qrCode } = req.params;
+            const user = req.user;
+
+            if (!user?.id) {
+                res.status(401).json({ success: false, message: 'User not authenticated' });
+                return;
+            }
+
+            const result = await this.paymentService.verifyTicket(
+                qrCode as string,
+                user.id,
+                user.role
+            );
+
+            res.status(200).json({ success: true, ticket: result });
+        } catch (error: any) {
+            console.error('Error verifying ticket:', error);
+            const message = error.message || 'Failed to verify ticket';
+            const status =
+                message === 'Ticket not found' || message === 'Event not found for this ticket'
+                    ? 404
+                    : message === 'You can only verify tickets for your own events'
+                        ? 403
+                        : message === 'Ticket code is required' || message === 'Unauthorized'
+                            ? 400
+                            : 500;
+            res.status(status).json({ success: false, message });
+        }
+    };
+
+    checkInTicket = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { qrCode } = req.params;
+            const user = req.user;
+
+            if (!user?.id) {
+                res.status(401).json({ success: false, message: 'User not authenticated' });
+                return;
+            }
+
+            const result = await this.paymentService.checkInTicket(
+                qrCode as string,
+                user.id,
+                user.role
+            );
+
+            res.status(result.valid || result.checkedIn ? 200 : 409).json({
+                success: result.valid || result.checkedIn,
+                ticket: result,
+            });
+        } catch (error: any) {
+            console.error('Error checking in ticket:', error);
+            const message = error.message || 'Failed to check in ticket';
+            const status =
+                message === 'Ticket not found' || message === 'Event not found for this ticket'
+                    ? 404
+                    : message === 'You can only verify tickets for your own events'
+                        ? 403
+                        : message === 'Ticket code is required' || message === 'Unauthorized'
+                            ? 400
+                            : 500;
+            res.status(status).json({ success: false, message });
+        }
+    };
+
     getBookingDetails = async (req: Request, res: Response): Promise<void> => {
         try {
             const { bookingId } = req.params;

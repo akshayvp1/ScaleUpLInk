@@ -6,9 +6,20 @@ export type ChatMessageType =
   | "video"
   | "file"
   | "sticker"
-  | "post";
+  | "post"
+  | "event";
 
-export interface ChatMessagePayload {
+export interface ChatEventPreview {
+  eventId?: string;
+  eventTitle?: string;
+  eventImage?: string;
+  eventStartDate?: string;
+  eventStartTime?: string;
+  eventVenue?: string;
+  eventCity?: string;
+}
+
+export interface ChatMessagePayload extends ChatEventPreview {
   text?: string;
   type?: ChatMessageType;
   fileUrl?: string;
@@ -21,7 +32,7 @@ export interface ChatMessagePayload {
   postAuthorName?: string;
 }
 
-export interface NormalizedChatMessagePayload {
+export interface NormalizedChatMessagePayload extends ChatEventPreview {
   text: string;
   type: ChatMessageType;
   fileUrl?: string;
@@ -34,7 +45,7 @@ export interface NormalizedChatMessagePayload {
   postAuthorName?: string;
 }
 
-export interface IMessage {
+export interface IMessage extends ChatEventPreview {
   _id: Types.ObjectId;
   senderId: Types.ObjectId;
   receiverId: Types.ObjectId;

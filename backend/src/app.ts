@@ -1,20 +1,20 @@
+import "./config/env";
 import "reflect-metadata";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
 import morgan from "morgan";
 import http from "http";
+import cookieParser from "cookie-parser";
 import { Server } from "socket.io";
 import fullRouter from "./routes/router";
 import payment from "./routes/paymentRouter";
 import "./config/container";
+import {
+    connectToDatabase,
+    disconnectFromDatabase,
+} from "./config/database";
 import { startSeatHoldCleanupJob } from "./jobs/releaseExpiredSeatHolds";
 import { initializeSocket } from "./socket/socket";
-
-import cookieParser from "cookie-parser";
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -28,30 +28,8 @@ const io = new Server(server, {
 });
 
 app.set("io", io);
-initializeSocket(io);
 
 const PORT = process.env.PORT || 4040;
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-    console.error("MongoDB URI is not set in environment variables.");
-    process.exit(1);
-}
-
-// MongoDB Events
-mongoose.connection.on("connected", () => {
-    console.log("✅ MongoDB connection established");
-});
-
-mongoose.connection.on("error", (err) => {
-    console.error("❌ MongoDB connection error:", err);
-});
-
-mongoose.connection.on("disconnected", () => {
-    console.log("⚠️ MongoDB disconnected");
-});
-
-startSeatHoldCleanupJob()
 
 // Middlewares
 app.use(
@@ -91,25 +69,67 @@ app.use(cookieParser());
 app.use("/api", fullRouter);
 app.use("/payments", payment);
 
-
-// Start Server
+// Start server only after MongoDB is reachable so background jobs and socket
+// handlers never issue queries against an unconnected/incorrect database.
 const startServer = async () => {
     try {
-        await mongoose.connect(MONGO_URI, {
-            serverSelectionTimeoutMS: 15000,
-        });
+        await connectToDatabase();
 
-        console.log("✅ MongoDB Connected Successfully");
+        initializeSocket(io);
+        startSeatHoldCleanupJob();
 
         server.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
-            console.log(`🔌 Socket.IO running`);
+            console.log(`[server] Listening on http://localhost:${PORT}`);
+            console.log("[server] Socket.IO ready");
         });
 
-    } catch (err: any) {
-        console.error("❌ MongoDB Connection Error:", err.message);
+        server.on("error", (error: NodeJS.ErrnoException) => {
+            if (error.code === "EADDRINUSE") {
+                console.error(
+                    `[server] Port ${PORT} is already in use. Stop the other process or set a different PORT.`
+                );
+            } else {
+                console.error("[server] HTTP server error:", error.message);
+            }
+        });
+    } catch (error) {
+        const message =
+            error instanceof Error ? error.message : "Unknown startup error";
+        console.error("[startup] Failed to start server:", message);
         process.exit(1);
     }
 };
 
-startServer();
+let shuttingDown = false;
+
+const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`[server] ${signal} received, shutting down...`);
+
+    const forceExit = setTimeout(() => {
+        console.error("[server] Forced shutdown after timeout.");
+        process.exit(1);
+    }, 10000);
+    forceExit.unref();
+
+    server.close(async () => {
+        try {
+            await disconnectFromDatabase();
+        } catch (error) {
+            console.error(
+                "[mongo] Error while disconnecting:",
+                error instanceof Error ? error.message : error
+            );
+        } finally {
+            clearTimeout(forceExit);
+            process.exit(0);
+        }
+    });
+};
+
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+
+void startServer();

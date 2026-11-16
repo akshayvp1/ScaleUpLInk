@@ -6,6 +6,7 @@ import {
   MapPin,
   X,
   Share2,
+  Send,
   Heart,
   Clock,
   Users,
@@ -25,6 +26,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import SeatMap from '../seats/SeatMap';
 import seatService, { Seat } from '../../services/seat/seatServics';
+import ShareEventModal from '../chat/ShareEventModal';
+import { useAppSelector } from '../../redux/hooks';
 
 interface EventProps {
   id?: string;
@@ -66,7 +69,13 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
   const [seats, setSeats] = useState<Seat[]>([]);
   const [isLoadingSeats, setIsLoadingSeats] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const navigate = useNavigate();
+
+  const reduxUserId = useAppSelector(
+    (state) => state.auth.user?._id ?? state.auth.user?.id ?? null
+  );
+  const viewerId = currentUserId ?? reduxUserId;
 
   React.useEffect(() => {
     if (event) {
@@ -76,23 +85,35 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
   }, [event]);
 
   // Fetch seats only when the seats tab is opened, so we don't hit the API
-  // for every event card the user glances at.
+  // for every event card the user glances at. While the tab is open, re-poll
+  // so seats released by other shoppers (or expired holds) become available.
   React.useEffect(() => {
-    const fetchSeats = async () => {
-      if (!event?.id || activeTab !== 'seats') return;
-      setIsLoadingSeats(true);
+    if (!event?.id || activeTab !== 'seats') return;
+
+    let cancelled = false;
+
+    const fetchSeats = async (showLoading: boolean) => {
+      if (showLoading) setIsLoadingSeats(true);
       try {
-        const data = await seatService.getSeatsForEvent(event.id);
-        console.log('[EventModal] fetched seats:', data); // TEMP: remove after debugging
-        setSeats(data);
+        const data = await seatService.getSeatsForEvent(event.id as string);
+        if (!cancelled) setSeats(data);
       } catch (err) {
         console.error('Failed to fetch seats:', err);
-        toast.error('Could not load the seat map. Please try again.');
+        if (showLoading) {
+          toast.error('Could not load the seat map. Please try again.');
+        }
       } finally {
-        setIsLoadingSeats(false);
+        if (showLoading && !cancelled) setIsLoadingSeats(false);
       }
     };
-    fetchSeats();
+
+    fetchSeats(true);
+    const timer = window.setInterval(() => fetchSeats(false), 15_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [event?.id, activeTab]);
 
   if (!event) return null;
@@ -109,21 +130,33 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
     event.endingDate &&
     format(new Date(event.startDate), 'yyyy-MM-dd') !== format(new Date(event.endingDate), 'yyyy-MM-dd');
 
+  const eventLink = event.id
+    ? `${window.location.origin}/events?eventId=${encodeURIComponent(event.id)}`
+    : window.location.href;
+
   const handleShare = () => {
     if (navigator.share) {
       navigator
         .share({
           title: event.eventTitle,
           text: `Check out ${event.eventTitle} on Melete`,
-          url: window.location.href,
+          url: eventLink,
         })
         .catch(() => {
           /* user cancelled share sheet, no-op */
         });
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(eventLink);
       toast.success('Event link copied to clipboard!');
     }
+  };
+
+  const handleOpenShareToChat = () => {
+    if (!event.id) {
+      toast.error('This event cannot be shared yet.');
+      return;
+    }
+    setIsShareOpen(true);
   };
 
   const handleSave = () => {
@@ -184,6 +217,7 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
       : Array.from(new Set(seats.map((s) => s.row))).sort();
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden rounded-2xl border-border bg-card p-0 shadow-float sm:max-w-3xl md:h-5/6 md:max-w-4xl md:flex-row lg:max-w-6xl">
         {/* Left side - Event Image and Basic Info */}
@@ -311,6 +345,15 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
             >
               <Share2 className="h-4 w-4 mr-1.5" />
               Share
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-border hover:bg-muted text-muted-foreground"
+              onClick={handleOpenShareToChat}
+            >
+              <Send className="h-4 w-4 mr-1.5" />
+              Send
             </Button>
             <Button
               variant="outline"
@@ -532,17 +575,42 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose, current
               </div>
             ) : (
               <SeatMap
+                key={event.id}
                 seats={seats}
                 rows={seatRows}
-                currentUserId={currentUserId}
+                currentUserId={viewerId}
                 isSubmitting={isHolding}
                 onContinue={handleContinueToPayment}
+                onRefreshSeats={() => {
+                  if (!event.id) return;
+                  seatService
+                    .getSeatsForEvent(event.id)
+                    .then(setSeats)
+                    .catch(() => {
+                      /* next poll will retry */
+                    });
+                }}
               />
             )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+    {isShareOpen && event.id && (
+      <ShareEventModal
+        event={{
+          id: event.id,
+          title: event.eventTitle,
+          image: event.mainBanner,
+          startDate: event.startDate,
+          startTime: event.startTime,
+          venue: event.venueName,
+          city: event.city,
+        }}
+        onClose={() => setIsShareOpen(false)}
+      />
+    )}
+    </>
   );
 };
 

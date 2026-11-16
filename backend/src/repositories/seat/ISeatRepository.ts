@@ -27,4 +27,10 @@ export interface ISeatRepository {
   ): Promise<number>;
   releaseAllExpiredHolds(): Promise<number>;
   countAvailable(eventId: string): Promise<number>;
+  countByEvent(eventId: string): Promise<number>;
+  countBookedByBooking(
+    eventId: string,
+    seatLabels: string[],
+    bookingId: string
+  ): Promise<number>;
 }

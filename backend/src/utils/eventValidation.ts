@@ -13,9 +13,9 @@ const VISIBILITIES = ["Public", "Private"] as const;
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const MAX_EVENT_DURATION_MS = 60 * 24 * 60 * 60 * 1000;
 
-const fail = (message: string): never => {
+function fail(message: string): never {
   throw new Error(message);
-};
+}
 
 const toTrimmedString = (value: unknown, label: string, maxLength: number): string => {
   if (typeof value !== "string") fail(`${label} is required`);
@@ -124,7 +124,9 @@ const normalizeTickets = (value: unknown): Ticket[] => {
     fail("At least one ticket type is required");
   }
 
-  const tickets = value.map((raw, index) => {
+  const list = value as unknown[];
+
+  const tickets = list.map((raw, index) => {
     const ticket = (raw ?? {}) as Partial<Ticket>;
     const type = toTrimmedString(ticket.type, `Ticket ${index + 1} name`, 80);
     const price = toFiniteNumber(ticket.price, `Ticket ${index + 1} price`);
@@ -163,10 +165,13 @@ export const validateEventCreationInput = (
   if (!eventType || !EVENT_TYPES.includes(eventType)) {
     fail("Please choose a valid event type");
   }
+  const safeEventType = eventType as ICreateEventDTO["eventType"];
+
   const eventVisibility = data.eventVisibility ?? "Public";
   if (!VISIBILITIES.includes(eventVisibility)) {
     fail("Please choose a valid event visibility");
   }
+  const safeVisibility = eventVisibility as ICreateEventDTO["eventVisibility"];
 
   const venueName = toTrimmedString(data.venueName, "Venue name", 200);
   const venueAddress =
@@ -180,12 +185,14 @@ export const validateEventCreationInput = (
       ? data.promotionalImage.trim()
       : undefined;
 
-  if (typeof data.startTime !== "string" || !TIME_PATTERN.test(data.startTime)) {
+  const startTime = data.startTime;
+  if (typeof startTime !== "string" || !TIME_PATTERN.test(startTime)) {
     fail("Start time must be in HH:mm format");
   }
+  const endingTime = data.endingTime;
   if (
-    data.endingTime !== undefined &&
-    (typeof data.endingTime !== "string" || !TIME_PATTERN.test(data.endingTime))
+    endingTime !== undefined &&
+    (typeof endingTime !== "string" || !TIME_PATTERN.test(endingTime))
   ) {
     fail("End time must be in HH:mm format");
   }
@@ -195,21 +202,22 @@ export const validateEventCreationInput = (
   if (Number.isNaN(startDate.getTime())) fail("Start date is invalid");
   if (Number.isNaN(endingDate.getTime())) fail("End date is invalid");
 
-  const startDateTime = parseEventDateTime(startDate, data.startTime);
-  const endDateTime = data.endingTime
-    ? parseEventDateTime(endingDate, data.endingTime)
+  const startDateTime = parseEventDateTime(startDate, startTime);
+  const endDateTime = endingTime
+    ? parseEventDateTime(endingDate, endingTime)
     : null;
 
   if (!startDateTime) fail("Start date and time are invalid");
-  if (startDateTime.getTime() <= now.getTime()) {
+  const start = startDateTime as Date;
+  if (start.getTime() <= now.getTime()) {
     fail("The event must start in the future");
   }
-  if (endDateTime && endDateTime.getTime() <= startDateTime.getTime()) {
+  if (endDateTime && endDateTime.getTime() <= start.getTime()) {
     fail("The event end must be after its start");
   }
   if (
     endDateTime &&
-    endDateTime.getTime() - startDateTime.getTime() > MAX_EVENT_DURATION_MS
+    endDateTime.getTime() - start.getTime() > MAX_EVENT_DURATION_MS
   ) {
     fail("An event cannot run for more than 60 days");
   }
@@ -218,21 +226,22 @@ export const validateEventCreationInput = (
   if (typeof data.ageRestriction !== "boolean") {
     fail("Age restriction must be true or false");
   }
+  const ageRestriction = data.ageRestriction as boolean;
 
   return {
     eventTitle,
     eventDescription,
-    eventType,
+    eventType: safeEventType,
     startDate,
-    startTime: data.startTime,
+    startTime: startTime as string,
     endingDate,
-    endingTime: data.endingTime,
-    eventVisibility,
+    endingTime,
+    eventVisibility: safeVisibility,
     venueName,
     venueAddress,
     city,
     tickets,
-    ageRestriction: data.ageRestriction,
+    ageRestriction,
     mainBanner,
     promotionalImage,
   };

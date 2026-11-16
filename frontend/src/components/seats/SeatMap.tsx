@@ -1,5 +1,5 @@
 // src/components/seats/SeatMap.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Seat } from "../../services/seat/seatServics";
 
 interface SeatMapProps {
@@ -10,6 +10,7 @@ interface SeatMapProps {
   holdMinutes?: number;
   currentUserId?: string | null;
   onContinue: (selected: Seat[]) => void;
+  onRefreshSeats?: () => void;
   isSubmitting?: boolean;
 }
 
@@ -88,9 +89,13 @@ const SeatMap: React.FC<SeatMapProps> = ({
   holdMinutes = 5,
   currentUserId = null,
   onContinue,
+  onRefreshSeats,
   isSubmitting = false,
 }) => {
   const [selected, setSelected] = useState<Record<string, Seat>>({});
+  const [now, setNow] = useState(() => Date.now());
+  const initializedEventRef = useRef<string | null>(null);
+  const expiredEventRef = useRef<string | null>(null);
 
   const seatsByRow = useMemo(() => {
     const map: Record<string, Seat[]> = {};
@@ -110,6 +115,87 @@ const SeatMap: React.FC<SeatMapProps> = ({
     });
     return map;
   }, [rows, seatsByRow]);
+
+  const eventKey = seats[0]?.eventId ?? null;
+
+  const myHeldSeats = useMemo(
+    () =>
+      seats.filter(
+        (seat) =>
+          seat.status === "held" &&
+          !!currentUserId &&
+          seat.heldBy === currentUserId
+      ),
+    [seats, currentUserId]
+  );
+
+  const nextHoldExpiry = useMemo(() => {
+    const timestamps = myHeldSeats
+      .map((seat) => (seat.holdExpiresAt ? new Date(seat.holdExpiresAt).getTime() : NaN))
+      .filter((value) => Number.isFinite(value));
+
+    return timestamps.length > 0 ? Math.min(...timestamps) : null;
+  }, [myHeldSeats]);
+
+  // Pull seats this user already holds back into the selection so returning
+  // from checkout doesn't make them look available again.
+  useEffect(() => {
+    if (myHeldSeats.length === 0) {
+      if (seats.length > 0) initializedEventRef.current = eventKey;
+      return;
+    }
+
+    if (initializedEventRef.current === eventKey) return;
+
+    setSelected((prev) => {
+      const next = { ...prev };
+      myHeldSeats.forEach((seat) => {
+        next[seat.seatLabel] = seat;
+      });
+      return next;
+    });
+
+    initializedEventRef.current = eventKey;
+  }, [eventKey, myHeldSeats, seats.length]);
+
+  useEffect(() => {
+    if (nextHoldExpiry === null) return;
+
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [nextHoldExpiry]);
+
+  useEffect(() => {
+    if (nextHoldExpiry === null || nextHoldExpiry > now) return;
+    if (expiredEventRef.current === eventKey) return;
+
+    expiredEventRef.current = eventKey;
+    setSelected((prev) => {
+      const next = { ...prev };
+      Object.entries(next).forEach(([label, seat]) => {
+        const expiry = seat.holdExpiresAt
+          ? new Date(seat.holdExpiresAt).getTime()
+          : NaN;
+        if (Number.isFinite(expiry) && expiry <= now) {
+          delete next[label];
+        }
+      });
+      return next;
+    });
+    onRefreshSeats?.();
+  }, [eventKey, nextHoldExpiry, now, onRefreshSeats]);
+
+  const holdSecondsLeft =
+    nextHoldExpiry === null
+      ? null
+      : Math.max(0, Math.ceil((nextHoldExpiry - now) / 1000));
+
+  const formatCountdown = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   const toggleSeat = (seat: Seat) => {
     setSelected((prev) => {
@@ -232,9 +318,22 @@ const SeatMap: React.FC<SeatMapProps> = ({
               ))}
             </div>
           )}
-          {selectedList.length > 0 && (
+          {selectedList.length > 0 && holdSecondsLeft === null && (
             <p className="text-[11px] text-muted-foreground mt-2">
               Seats are held for {holdMinutes} minutes once you continue to payment.
+            </p>
+          )}
+          {holdSecondsLeft !== null && (
+            <p
+              className={`mt-2 text-[11px] font-medium ${
+                holdSecondsLeft <= 60 ? "text-destructive" : "text-muted-foreground"
+              }`}
+              role="status"
+              aria-live="polite"
+            >
+              {holdSecondsLeft > 0
+                ? `Your seats are held for ${formatCountdown(holdSecondsLeft)}. Complete payment before the timer ends.`
+                : "Your seat hold has expired. Please select seats again."}
             </p>
           )}
         </div>

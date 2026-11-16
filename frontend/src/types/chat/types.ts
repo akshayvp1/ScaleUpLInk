@@ -8,13 +8,24 @@ export type ChatMessageType =
   | "video"
   | "file"
   | "sticker"
-  | "post";
+  | "post"
+  | "event";
 
 export interface SharedPostPayload {
   postId: string;
   postContent: string;
   postMedia?: string;
   postAuthorName?: string;
+}
+
+export interface SharedEventPayload {
+  eventId: string;
+  eventTitle: string;
+  eventImage?: string;
+  eventStartDate?: string;
+  eventStartTime?: string;
+  eventVenue?: string;
+  eventCity?: string;
 }
 
 export interface ChatMessage {
@@ -32,6 +43,13 @@ export interface ChatMessage {
   postContent?: string;
   postMedia?: string;
   postAuthorName?: string;
+  eventId?: string;
+  eventTitle?: string;
+  eventImage?: string;
+  eventStartDate?: string;
+  eventStartTime?: string;
+  eventVenue?: string;
+  eventCity?: string;
   seen: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -106,6 +124,13 @@ export interface GroupMessage {
   postContent?: string;
   postMedia?: string;
   postAuthorName?: string;
+  eventId?: string;
+  eventTitle?: string;
+  eventImage?: string;
+  eventStartDate?: string;
+  eventStartTime?: string;
+  eventVenue?: string;
+  eventCity?: string;
   seenBy: string[];
   createdAt: string;
   status?: "sending" | "sent" | "error";

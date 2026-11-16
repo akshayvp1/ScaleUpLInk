@@ -8,7 +8,7 @@ const MessageSchema = new Schema<IMessage>(
     text: { type: String, default: "" },
     type: {
       type: String,
-      enum: ["text", "image", "video", "file", "sticker", "post"],
+      enum: ["text", "image", "video", "file", "sticker", "post", "event"],
       default: "text",
     },
     fileUrl: { type: String },
@@ -19,6 +19,13 @@ const MessageSchema = new Schema<IMessage>(
     postContent: { type: String, maxlength: 500 },
     postMedia: { type: String },
     postAuthorName: { type: String, maxlength: 120 },
+    eventId: { type: String },
+    eventTitle: { type: String, maxlength: 120 },
+    eventImage: { type: String },
+    eventStartDate: { type: String },
+    eventStartTime: { type: String, maxlength: 5 },
+    eventVenue: { type: String, maxlength: 200 },
+    eventCity: { type: String, maxlength: 100 },
     seen: { type: Boolean, default: false },
     expiresAt: {
       type: Date,

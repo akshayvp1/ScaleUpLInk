@@ -23,7 +23,8 @@ class SeatController implements ISeatController {
       res.status(200).json({ success: true, seats });
     } catch (error) {
       console.error("Error fetching seats:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch seats." });
+      const message = error instanceof Error ? error.message : "Failed to fetch seats.";
+      res.status(400).json({ success: false, message });
     }
   };
 
@@ -34,11 +35,18 @@ class SeatController implements ISeatController {
         res.status(400).json({ success: false, message: "eventId and rows are required." });
         return;
       }
-      const seats = await this.seatService.generateSeatsForEvent(eventId, rows);
+
+      const requester = req.user
+        ? { id: req.user.id, role: req.user.role }
+        : undefined;
+
+      const seats = await this.seatService.generateSeatsForEvent(eventId, rows, requester);
       res.status(201).json({ success: true, seats });
     } catch (error) {
       console.error("Error generating seats:", error);
-      res.status(500).json({ success: false, message: "Failed to generate seats." });
+      const message =
+        error instanceof Error ? error.message : "Failed to generate seats.";
+      res.status(400).json({ success: false, message });
     }
   };
 
@@ -67,7 +75,7 @@ class SeatController implements ISeatController {
     } catch (error) {
       console.error("Error holding seats:", error);
       const message = error instanceof Error ? error.message : "Failed to hold seats.";
-      res.status(500).json({ success: false, message });
+      res.status(400).json({ success: false, message });
     }
   };
 

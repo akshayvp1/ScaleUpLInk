@@ -1,11 +1,12 @@
 import { injectable, inject } from "tsyringe";
-import { Types } from "mongoose";
+import { Model, Types } from "mongoose";
 import { IGroupService } from "./interface/IGroupService";
 import { IGroupRepository } from "../../repositories/chat/interface/IGroupRepository";
 import { IUserRepository } from "../../repositories/entrepreneur/interface/IUserRepository";
 import { IGroup } from "../../interfaces/IGroup";
 import { IGroupMessage } from "../../interfaces/IGroupMessage";
 import { ChatMessagePayload } from "../../interfaces/IMessage";
+import { EventDocument } from "../../interfaces/IEvent";
 import ConnectionService from "../connection/connectionService";
 import { IPostRepository } from "../../repositories/post/interface/IPostRepository";
 import { normalizeChatPayload } from "../../utils/chatPayload";
@@ -16,7 +17,8 @@ class GroupService implements IGroupService {
     @inject("GroupRepository") private groupRepository: IGroupRepository,
     @inject("UserRepository") private userRepository: IUserRepository,
     @inject("ConnectionService") private connectionService: ConnectionService,
-    @inject("PostRepository") private postRepository: IPostRepository
+    @inject("PostRepository") private postRepository: IPostRepository,
+    @inject("EventModel") private eventModel: Model<EventDocument>
   ) {}
 
   private assertValidObjectId(id: string, label: string): void {
@@ -126,6 +128,29 @@ class GroupService implements IGroupService {
       }
 
       payload = { ...payload, ...preview };
+    }
+
+    if (payload.type === "event" && payload.eventId) {
+      const event = await this.eventModel
+        .findById(payload.eventId)
+        .select(
+          "eventStatus eventTitle mainBanner startDate startTime venueName city"
+        )
+        .lean();
+
+      if (!event || event.eventStatus !== "approve") {
+        throw new Error("Event not found or not available to share");
+      }
+
+      payload = {
+        ...payload,
+        eventTitle: event.eventTitle,
+        eventImage: event.mainBanner,
+        eventStartDate: new Date(event.startDate).toISOString(),
+        eventStartTime: event.startTime,
+        eventVenue: event.venueName,
+        eventCity: event.city,
+      };
     }
 
     return await this.groupRepository.saveGroupMessage(groupId, senderId, payload);

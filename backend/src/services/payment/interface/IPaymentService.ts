@@ -28,6 +28,20 @@ export interface BookingDetailsResponse {
   event: BookingEventSummary;
 }
 
+export interface TicketVerificationResponse {
+  valid: boolean;
+  message: string;
+  checkedIn: boolean;
+  ticket?: ITicket;
+  bookingId?: string;
+  eventId?: string;
+  eventTitle?: string;
+  eventStartDate?: Date;
+  eventStartTime?: string;
+  venueName?: string;
+  city?: string;
+}
+
 export interface IPaymentService {
   createPaymentIntent(
     eventId: string,
@@ -47,5 +61,15 @@ export interface IPaymentService {
     bookingId: string
   ): Promise<IBooking>;
   getBookingDetails(bookingId: string, userId: string): Promise<BookingDetailsResponse>;
+  verifyTicket(
+    qrCode: string,
+    requesterId: string,
+    requesterRole?: string
+  ): Promise<TicketVerificationResponse>;
+  checkInTicket(
+    qrCode: string,
+    requesterId: string,
+    requesterRole?: string
+  ): Promise<TicketVerificationResponse>;
   handleStateTransactions(): Promise<void>;
 }

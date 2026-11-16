@@ -68,6 +68,24 @@ class PaymentRepository implements IPaymentRepository {
     }
   }
 
+  async findPendingEventForUser(
+    eventId: string,
+    userId: string
+  ): Promise<IBooking[]> {
+    try {
+      return await BookingsModel.find({
+        eventId,
+        userId,
+        paymentStatus: "pending",
+      }).exec();
+    } catch (error: unknown) {
+      console.error("Error finding pending payments for user:", error);
+      throw new Error(
+        `Failed to find pending payments: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+
   async updatePayment(
     paymentIntentId: string,
     update: Partial<IBooking>,
@@ -90,8 +108,11 @@ class PaymentRepository implements IPaymentRepository {
       let payment = await BookingsModel.findOneAndUpdate(filter, { $set: update }, options).exec();
 
       if (payment && isCompletingPayment) {
-        const seatCount =
-          Array.isArray((payment as any).seats) && (payment as any).seats.length > 0
+        // Tickets are the source of truth for how many people were admitted.
+        // Legacy `seats`/`quantity` fallbacks are kept only for old bookings.
+        const seatCount = Array.isArray(payment.tickets) && payment.tickets.length > 0
+          ? payment.tickets.length
+          : Array.isArray((payment as any).seats) && (payment as any).seats.length > 0
             ? (payment as any).seats.length
             : ((payment as any).quantity ?? 1);
 
@@ -134,6 +155,47 @@ class PaymentRepository implements IPaymentRepository {
       console.error("Error fetching booking by bookingId:", error);
       throw new Error(
         `Failed to fetch booking: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+
+  async findTicketByQrCode(qrCode: string): Promise<IBooking | null> {
+    try {
+      return await BookingsModel.findOne({
+        "tickets.uniqueQrCode": qrCode,
+      }).exec();
+    } catch (error: unknown) {
+      console.error("Error fetching ticket by QR code:", error);
+      throw new Error(
+        `Failed to fetch ticket: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+
+  async markTicketUsed(
+    bookingId: string,
+    qrCode: string
+  ): Promise<IBooking | null> {
+    try {
+      return await BookingsModel.findOneAndUpdate(
+        {
+          bookingId,
+          tickets: {
+            $elemMatch: {
+              uniqueQrCode: qrCode,
+              status: "active",
+            },
+          },
+        },
+        {
+          $set: { "tickets.$.status": "used" },
+        },
+        { new: true }
+      ).exec();
+    } catch (error: unknown) {
+      console.error("Error marking ticket used:", error);
+      throw new Error(
+        `Failed to mark ticket used: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
   }

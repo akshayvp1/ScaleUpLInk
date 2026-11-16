@@ -6,5 +6,7 @@ export interface IPaymentController {
   handleWebhook(req: Request, res: Response): Promise<void>;
   verifyPayment(req: Request, res: Response): Promise<void>;
   confirmSeatsBooked(req: Request, res: Response): Promise<void>;
+  verifyTicket(req: Request, res: Response): Promise<void>;
+  checkInTicket(req: Request, res: Response): Promise<void>;
   getBookingDetails(req: Request, res: Response): Promise<void>;
 }

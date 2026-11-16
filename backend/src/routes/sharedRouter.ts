@@ -196,6 +196,12 @@ shared.post(
 );
 shared.get("/get-events", authenticate, eventController.getAllEvents.bind(eventController));
 shared.get("/events/:id", authenticate, eventController.getEventById.bind(eventController));
+shared.post(
+  "/events/:id/share-to-users",
+  authenticate,
+  activeCheck,
+  eventController.shareEventToUsers.bind(eventController)
+);
 shared.get("/paid-events", authenticate, eventController.getPaidEvents.bind(eventController));
 shared.get(
   "/created-by",

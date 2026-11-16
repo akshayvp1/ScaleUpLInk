@@ -1,4 +1,5 @@
-import { Download, ExternalLink, FileText, Video } from "lucide-react";
+import { Calendar, Download, ExternalLink, FileText, MapPin, Video } from "lucide-react";
+import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import type { ChatMessageType } from "../../types/chat/types";
 import {
@@ -21,6 +22,13 @@ interface MessageContentProps {
     postContent?: string;
     postMedia?: string;
     postAuthorName?: string;
+    eventId?: string;
+    eventTitle?: string;
+    eventImage?: string;
+    eventStartDate?: string;
+    eventStartTime?: string;
+    eventVenue?: string;
+    eventCity?: string;
   };
   isMe: boolean;
 }
@@ -41,6 +49,80 @@ export default function MessageContent({ message, isMe }: MessageContentProps) {
         <span className="text-5xl leading-none" role="img" aria-label="Sticker">
           {message.text}
         </span>
+      </div>
+    );
+  }
+
+  if (type === "event" && message.eventId) {
+    const eventDate = message.eventStartDate
+      ? new Date(message.eventStartDate)
+      : null;
+    const dateLabel =
+      eventDate && !Number.isNaN(eventDate.getTime())
+        ? format(eventDate, "EEE, MMM d, yyyy")
+        : "";
+
+    return (
+      <div className="space-y-1.5">
+        <Link
+          to={`/events?eventId=${encodeURIComponent(message.eventId)}`}
+          className={`block overflow-hidden rounded-lg border transition-colors ${
+            isMe
+              ? "border-white/30 bg-white/10 hover:bg-white/20"
+              : "border-border bg-muted/60 hover:bg-muted"
+          }`}
+        >
+          {message.eventImage && (
+            <img
+              src={message.eventImage}
+              alt=""
+              className="max-h-52 w-full object-cover"
+            />
+          )}
+          <div className="space-y-1 p-2.5">
+            <p
+              className={`text-[10px] font-semibold uppercase tracking-wide ${
+                isMe ? "text-white/70" : "text-muted-foreground"
+              }`}
+            >
+              Shared event
+            </p>
+            <p className="line-clamp-2 text-sm font-semibold">
+              {message.eventTitle || "Event"}
+            </p>
+            <div
+              className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] ${
+                isMe ? "text-white/80" : "text-muted-foreground"
+              }`}
+            >
+              {dateLabel && (
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {dateLabel}
+                  {message.eventStartTime ? ` · ${message.eventStartTime}` : ""}
+                </span>
+              )}
+              {message.eventVenue && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {[message.eventVenue, message.eventCity]
+                    .filter(Boolean)
+                    .join(", ")}
+                </span>
+              )}
+            </div>
+          </div>
+        </Link>
+        <Link
+          to={`/events?eventId=${encodeURIComponent(message.eventId)}`}
+          className={`inline-flex items-center gap-1 text-[11px] font-medium underline-offset-2 hover:underline ${
+            isMe ? "text-white/80" : "text-primary"
+          }`}
+        >
+          <ExternalLink className="h-3 w-3" />
+          Open event and book tickets
+        </Link>
+        {message.text && <p className="whitespace-pre-wrap">{message.text}</p>}
       </div>
     );
   }

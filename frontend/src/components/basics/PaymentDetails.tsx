@@ -23,8 +23,7 @@ import StripeService, {
 } from "../../services/stripe/stripeService";
 import { SuccessToast } from "../../components/ui/toast";
 
-const buildQrPayload = (bookingId: string, uniqueId: string, qrCode: string) =>
-  JSON.stringify({ bookingId, ticketId: uniqueId, code: qrCode });
+const buildQrPayload = (qrCode: string) => qrCode.trim();
 
 // --- Professional ticket-stub PDF ------------------------------------------
 // Each ticket is rendered on its OWN page, sized exactly to the ticket
@@ -375,11 +374,7 @@ const PaymentDetails: React.FC = () => {
     const generateAll = async () => {
       const entries = await Promise.all(
         booking.tickets.map(async (ticket) => {
-          const payload = buildQrPayload(
-            booking.bookingId,
-            ticket.uniqueId,
-            ticket.uniqueQrCode,
-          );
+          const payload = buildQrPayload(ticket.uniqueQrCode);
           const dataUrl = await QRCode.toDataURL(payload, {
             width: 200,
             margin: 1,
