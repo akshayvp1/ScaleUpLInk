@@ -340,6 +340,7 @@ export default function Chat() {
   }
 
   function emitMessage(payload: {
+    
     text?: string;
     type?: ChatMessage["type"];
     fileUrl?: string;
@@ -351,6 +352,9 @@ export default function Chat() {
     postMedia?: string;
     postAuthorName?: string;
   }) {
+    console.log("EMIT MESSAGE CALLED");
+console.log("Socket connected:", socket.connected);
+console.log("Selected contact:", selectedContact?._id);
     if (!selectedContact || !currentUserId) return;
 
     const tempId = `temp_${Date.now()}`;
@@ -377,7 +381,7 @@ export default function Chat() {
     };
 
     dispatch(addMessage(optimistic));
-
+     console.log("Emitting send_message event");
     socket.emit("send_message", {
       receiverId: selectedContact._id,
       tempId,
@@ -387,12 +391,20 @@ export default function Chat() {
   }
 
   function sendMessage() {
-    if (!newMessage.trim()) return;
+  console.log("SEND MESSAGE FUNCTION CALLED");
+  console.log("Message:", newMessage);
+  console.log("Socket connected:", socket.connected);
+  console.log("Selected contact:", selectedContact?._id);
 
-    const text = newMessage.trim();
-    setNewMessage("");
-    emitMessage({ text, type: "text" });
+  if (!newMessage.trim()) {
+    console.log("Message is empty");
+    return;
   }
+
+  const text = newMessage.trim();
+  emitMessage({ text, type: "text" });
+  setNewMessage("");
+}
 
   function sendSticker(sticker: string) {
     emitMessage({ text: sticker, type: "sticker" });
