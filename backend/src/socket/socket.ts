@@ -103,12 +103,33 @@ export const initializeSocket = (io: Server) => {
 
     // Join the personal room before advertising the user as online so an
     // incoming call cannot be emitted to a room the socket has not joined yet.
-    socket.join(userId);
+    // socket.join(userId);
 
-    await redisClient.set(`socket:${userId}`, socket.id);
-    await redisClient.set(`online:${userId}`, "1");
+    // await redisClient.set(`socket:${userId}`, socket.id);
+    // await redisClient.set(`online:${userId}`, "1");
 
-    io.emit("user_status", { userId, online: true, lastSeen: null });
+    // io.emit("user_status", { userId, online: true, lastSeen: null });
+
+
+
+socket.join(userId);
+
+// Redis should not prevent Socket.IO message handlers from registering.
+try {
+  await redisClient.set(`socket:${userId}`, socket.id);
+  await redisClient.set(`online:${userId}`, "1");
+
+  console.log("Redis online status updated:", userId);
+} catch (error) {
+  console.error("Redis online status error:", error);
+}
+
+io.emit("user_status", {
+  userId,
+  online: true,
+  lastSeen: null,
+});
+
 
     try {
       const userGroups = await groupService.getGroupsForUser(userId);
@@ -159,10 +180,13 @@ export const initializeSocket = (io: Server) => {
         } & ChatMessagePayload
       ) => {
         try {
+          console.log("BACKEND RECEIVED SEND_MESSAGE");
+console.log("Receiver:", data?.receiverId);
+console.log("Text:", data?.text);
           if (!data?.receiverId || data.receiverId === userId) {
             throw new Error("Invalid receiver");
           }
-
+chatService
           const saved = await chatService.saveMessage(userId, data.receiverId, {
             text: data.text,
             type: data.type,
@@ -199,6 +223,7 @@ export const initializeSocket = (io: Server) => {
             seen: false,
             createdAt: saved.createdAt,
           };
+          console.log("Message saved successfully:", saved._id);
 
           io.to(data.receiverId).emit("receive_message", payload);
           socket.emit("message_sent", payload);
@@ -908,8 +933,12 @@ export const initializeSocket = (io: Server) => {
         }
       }
 
-      await redisClient.del(`socket:${userId}`);
-      await redisClient.del(`online:${userId}`);
+     try {
+  await redisClient.del(`socket:${userId}`);
+  await redisClient.del(`online:${userId}`);
+} catch (error) {
+  console.error("Redis disconnect cleanup error:", error);
+}
       const lastSeen = new Date();
       await User.findByIdAndUpdate(userId, { lastSeen });
       io.emit("user_status", { userId, online: false, lastSeen });
