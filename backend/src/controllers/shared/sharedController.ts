@@ -7,6 +7,7 @@ import IAuthService from "../../services/entrepreneur/interface/IAuthService";
 import IInvestorService from "../../services/investor/interface/IInvestorService";
 import { ITokenPayload } from "../../utils/jwt";
 import { IAdminAuthService } from "../../services/admin/interface/IAdminAuthService";
+import { refreshCookieClearOptions } from "../../utils/refreshCookie";
 
 export const checkUserStatus = (
   authService: IAuthService,
@@ -34,11 +35,7 @@ export const checkUserStatus = (
 
       if (!isBlocked) {
         
-        res.clearCookie("refreshToken", {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-        });
+        res.clearCookie("refreshToken", refreshCookieClearOptions());
         res.status(403).json({ success: false, message: "User is Blocked" });
         return;
       }

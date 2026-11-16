@@ -352,9 +352,6 @@ export default function Chat() {
     postMedia?: string;
     postAuthorName?: string;
   }) {
-    console.log("EMIT MESSAGE CALLED");
-console.log("Socket connected:", socket.connected);
-console.log("Selected contact:", selectedContact?._id);
     if (!selectedContact || !currentUserId) return;
 
     const tempId = `temp_${Date.now()}`;
@@ -381,7 +378,6 @@ console.log("Selected contact:", selectedContact?._id);
     };
 
     dispatch(addMessage(optimistic));
-     console.log("Emitting send_message event");
     socket.emit("send_message", {
       receiverId: selectedContact._id,
       tempId,
@@ -391,15 +387,7 @@ console.log("Selected contact:", selectedContact?._id);
   }
 
   function sendMessage() {
-  console.log("SEND MESSAGE FUNCTION CALLED");
-  console.log("Message:", newMessage);
-  console.log("Socket connected:", socket.connected);
-  console.log("Selected contact:", selectedContact?._id);
-
-  if (!newMessage.trim()) {
-    console.log("Message is empty");
-    return;
-  }
+  if (!newMessage.trim()) return;
 
   const text = newMessage.trim();
   emitMessage({ text, type: "text" });

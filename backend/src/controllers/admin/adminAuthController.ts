@@ -2,6 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import { inject, injectable } from "tsyringe";
 import { IAdminAuthController } from "./interface/IAdminAuthController";
 import AdminAuthService from "../../services/admin/adminAuthService";
+import {
+  refreshCookieClearOptions,
+  refreshCookieOptions,
+} from "../../utils/refreshCookie";
 
 @injectable()
 class AdminAuthController implements IAdminAuthController {
@@ -27,12 +31,11 @@ class AdminAuthController implements IAdminAuthController {
        
       const { accessToken, refreshToken, user } = signInResult;
       
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, 
-      });
+      res.cookie(
+        "refreshToken",
+        refreshToken,
+        refreshCookieOptions(7 * 24 * 60 * 60 * 1000)
+      );
 
       res.status(200).json({
         success: true,
@@ -47,11 +50,7 @@ class AdminAuthController implements IAdminAuthController {
   };
   signOut = async(_req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try{
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-          });
+        res.clearCookie("refreshToken", refreshCookieClearOptions());
           res.status(200).json({
             message: "User signed out successfully",
           });

@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import { Server } from "socket.io";
 import fullRouter from "./routes/router";
 import payment from "./routes/paymentRouter";
+import { corsOptions } from "./config/cors";
 import "./config/container";
 import {
     connectToDatabase,
@@ -20,11 +21,10 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
-        credentials: true,
-    },
-    maxHttpBufferSize: 10 * 1024 * 1024,
+    cors: corsOptions,
+    maxHttpBufferSize: 12 * 1024 * 1024,
+    pingTimeout: 60000,
+    pingInterval: 25000,
 });
 
 app.set("io", io);
@@ -32,12 +32,7 @@ app.set("io", io);
 const PORT = process.env.PORT || 4040;
 
 // Middlewares
-app.use(
-    cors({
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
-        credentials: true,
-    })
-);
+app.use(cors(corsOptions));
 
 app.use(morgan("dev"));
 

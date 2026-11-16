@@ -11,6 +11,10 @@ import { verifyRefreshToken, refreshAccessToken } from "../../utils/jwt";
 import { IUser } from "../../interfaces/IUser";
 import ConnectionService from "../../services/connection/connectionService";
 import { buildUserView } from "../../utils/userVisibility";
+import {
+  refreshCookieClearOptions,
+  refreshCookieOptions,
+} from "../../utils/refreshCookie";
 
 @injectable()
 class AuthController implements IAuthController {
@@ -79,12 +83,11 @@ class AuthController implements IAuthController {
 
       const { accessToken, refreshToken, user } = signInResult;
 
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie(
+        "refreshToken",
+        refreshToken,
+        refreshCookieOptions(7 * 24 * 60 * 60 * 1000)
+      );
 
       res.status(200).json({
         success: true,
@@ -99,11 +102,7 @@ class AuthController implements IAuthController {
 
   signOut = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-      });
+      res.clearCookie("refreshToken", refreshCookieClearOptions());
       res.status(200).json({
         message: "User signed out successfully",
       });
@@ -126,12 +125,11 @@ class AuthController implements IAuthController {
       if (!result.partialUser) {
         const { user, accessToken, refreshToken, partialUser } = result;
 
-        res.cookie("refreshToken", refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie(
+          "refreshToken",
+          refreshToken,
+          refreshCookieOptions(7 * 24 * 60 * 60 * 1000)
+        );
 
         res.status(200).json({ user, accessToken, partialUser });
         return;
@@ -179,12 +177,11 @@ class AuthController implements IAuthController {
       const result = await this.authService.setEntrepreneurRole({ userData });
 
       const { user, accessToken, refreshToken } = result;
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie(
+        "refreshToken",
+        refreshToken,
+        refreshCookieOptions(7 * 24 * 60 * 60 * 1000)
+      );
       res.status(200).json({
         user,
         accessToken,

@@ -4,6 +4,7 @@ import { IInvestorController } from "../../controllers/investor/interface/IInves
 import InvestorService from "../../services/investor/investorService";
 import { InvestorListQuery } from "../../services/investor/interface/IInvestorService";
 import { IUser } from "../../interfaces/IUser";
+import { refreshCookieOptions } from "../../utils/refreshCookie";
 
 @injectable()
 class InvestorController implements IInvestorController {
@@ -25,12 +26,11 @@ class InvestorController implements IInvestorController {
           const result = await this.investorService.completeProfile({ userData });
           const {user,accessToken,refreshToken}=result;
 
-          res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-          });
+          res.cookie(
+            "refreshToken",
+            refreshToken,
+            refreshCookieOptions(7 * 24 * 60 * 60 * 1000)
+          );
           res.status(200).json({
             user,
             accessToken,

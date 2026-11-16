@@ -173,7 +173,7 @@ export const initializeSocket = (io: Server) => {
           tempId: string;
         } & ChatMessagePayload
       ) => {
-        console.log("📩 BACKEND RECEIVED MESSAGE:", data);
+        console.log("📩 BACKEND RECEIVED MESSAGE:", { receiverId: data?.receiverId });
 
         try {
           if (!data?.receiverId || data.receiverId === userId) {
@@ -345,6 +345,13 @@ export const initializeSocket = (io: Server) => {
             postContent: saved.postContent,
             postMedia: saved.postMedia,
             postAuthorName: saved.postAuthorName,
+            eventId: saved.eventId,
+            eventTitle: saved.eventTitle,
+            eventImage: saved.eventImage,
+            eventStartDate: saved.eventStartDate,
+            eventStartTime: saved.eventStartTime,
+            eventVenue: saved.eventVenue,
+            eventCity: saved.eventCity,
             seenBy: [userId],
             createdAt: saved.createdAt,
           };
