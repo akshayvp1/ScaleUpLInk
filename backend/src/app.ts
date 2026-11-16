@@ -69,6 +69,13 @@ app.use(cookieParser());
 app.use("/api", fullRouter);
 app.use("/payments", payment);
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "ScaleUp Link Backend is running!",
+  });
+});
+
 // Start server only after MongoDB is reachable so background jobs and socket
 // handlers never issue queries against an unconnected/incorrect database.
 const startServer = async () => {
