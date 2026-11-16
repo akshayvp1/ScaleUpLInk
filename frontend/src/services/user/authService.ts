@@ -44,7 +44,11 @@ interface IAuthServiceEntrepreneur {
 
 type SignInResult = { user: IUser; accessToken: string };
 type MockSignUpResult = { status: number; message: string };
-type GoogleSignInResult = { partialUser?: boolean; user?: IUser; accessToken?: string } | boolean;
+type GoogleSignInResult = {
+  partialUser: boolean;
+  user?: IUser;
+  accessToken?: string;
+};
 
 class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   async sendOtp(credentials: RegisterCredentials, role: "entrepreneur" | "investor"): Promise<MockSignUpResult> {
@@ -136,45 +140,65 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   }
 
   // ─── FIX: `user` now passed into both signIn dispatches ─────────────────
-  async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
-    try {
-      const response = await api["shared"].post("/googleAuth", { credential });
-      const { user, accessToken, partialUser } = response.data;
+  
+async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
+  try {
+    const response = await api.shared.post("/googleAuth", { credential });
 
-      if (partialUser) {
-        store.dispatch(setTempUser({ tempUser: user }));
+    const { user, accessToken, partialUser } = response.data;
 
-        store.dispatch(
-          signIn({
-            email: user.email,
-            role: user.role,
-            token: accessToken,
-            isAuthenticated: false,
-            user, // <-- FIX
-          })
-        );
-        return partialUser;
-      }
+    if (!user?.email) {
+      throw new Error("Google authentication response does not contain a valid user.");
+    }
 
-      store.dispatch(
-        signIn({
-          email: user.email,
-          role: user.role,
-          token: accessToken,
-          user, // <-- FIX
-        })
-      );
+    // New Google user: complete registration/profile first
+    if (partialUser) {
       store.dispatch(setTempUser({ tempUser: user }));
 
-      return partialUser;
-    } catch (error) {
-      console.error("Google Authentication Error:", error);
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Google authentication failed");
-      }
-      throw new Error("An unknown error occurred during Google authentication");
+      return {
+        partialUser: true,
+        user,
+      };
     }
+
+    // Existing Google user
+    if (!accessToken || !user.role) {
+      throw new Error("Google authentication response is missing user role or access token.");
+    }
+
+    store.dispatch(
+      signIn({
+        email: user.email,
+        role: user.role,
+        token: accessToken,
+        isAuthenticated: true,
+        user,
+      })
+    );
+
+    store.dispatch(setTempUser({ tempUser: user }));
+
+    return {
+      partialUser: false,
+      user,
+      accessToken,
+    };
+
+  } catch (error) {
+    console.error("Google Authentication Error:", error);
+
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        error.response?.data?.message || "Google authentication failed"
+      );
+    }
+
+    throw error instanceof Error
+      ? error
+      : new Error("An unknown error occurred during Google authentication");
   }
+}
+
 
   async completeProfile(userData: Partial<IUser>): Promise<void> {
     try {

@@ -94,59 +94,53 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLoginSuccess = async (
-    credentialResponse: CredentialResponse
-  ) => {
-    setErrorMessage("");
-    setSuccessMessage("");
+  
+const handleGoogleLoginSuccess = async (
+  credentialResponse: CredentialResponse
+) => {
+  setErrorMessage("");
+  setSuccessMessage("");
 
-    try {
-      const isPartialUser = await authService.verifyGoogleToken(
-        credentialResponse.credential ?? ""
-      );
+  if (!credentialResponse.credential) {
+    toast.error("Google credential was not received.");
+    return;
+  }
 
-      if (isPartialUser) {
-        setTimeout(() => {
-          toast.success("Google authentication successful!", {
-            duration: 3000,
-            position: "top-right",
-            style: {
-              background: "var(--card)",
-              color: "var(--card-foreground)",
-              borderRadius: "8px",
-            },
-          });
-        }, 500);
-        setTimeout(() => navigate("/role"), 2000);
-      } else {
-        setTimeout(() => {
-          toast.success("Google authentication successful!", {
-            duration: 3000,
-            position: "top-right",
-            style: {
-              background: "var(--card)",
-              color: "var(--card-foreground)",
-              borderRadius: "8px",
-            },
-          });
-        }, 500);
-        setTimeout(() => navigate("/mainpage/dashboard"), 2000);
-      }
-    } catch (error) {
-      console.error("Google login verification error:", error);
-      setTimeout(() => {
-        toast.error("Failed to verify Google credentials. Please try again.", {
-          duration: 3000,
-          position: "top-right",
-          style: {
-            background: "var(--card)",
-            color: "var(--card-foreground)",
-            borderRadius: "8px",
-          },
-        });
-      }, 500);
+  try {
+    const result = await authService.verifyGoogleToken(
+      credentialResponse.credential
+    );
+
+    if (result && typeof result === "object" && result.partialUser) {
+      toast.success("Google authentication successful!", {
+        duration: 3000,
+        position: "top-right",
+      });
+
+      setTimeout(() => navigate("/role"), 2000);
+    } else {
+      toast.success("Google authentication successful!", {
+        duration: 3000,
+        position: "top-right",
+      });
+
+      setTimeout(() => navigate("/mainpage/dashboard"), 2000);
     }
-  };
+  } catch (error) {
+    console.error("Google login verification error:", error);
+
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Failed to verify Google credentials. Please try again.",
+      {
+        duration: 3000,
+        position: "top-right",
+      }
+    );
+  }
+};
+
 
   const handleGoogleLoginError = () => {
     setErrorMessage(
