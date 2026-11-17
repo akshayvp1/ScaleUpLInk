@@ -27,6 +27,61 @@ interface ActiveCallSession {
 export const initializeSocket = (io: Server) => {
   const activeCalls = new Map<string, ActiveCallSession>();
 
+  // Keep a local presence registry so messaging and call signaling keep
+  // working even if Redis is unavailable or slow. Redis is only used to share
+  // presence between instances; it must never gate handler registration or a
+  // user's ability to send a message/start a call.
+  const localOnlineSockets = new Map<string, number>();
+  const REDIS_TIMEOUT_MS = 1500;
+
+  const markUserOnline = (userId: string): void => {
+    localOnlineSockets.set(userId, (localOnlineSockets.get(userId) ?? 0) + 1);
+  };
+
+  const markUserOffline = (userId: string): void => {
+    const nextCount = (localOnlineSockets.get(userId) ?? 0) - 1;
+
+    if (nextCount > 0) {
+      localOnlineSockets.set(userId, nextCount);
+    } else {
+      localOnlineSockets.delete(userId);
+    }
+  };
+
+  const isUserLocallyOnline = (userId: string): boolean =>
+    (localOnlineSockets.get(userId) ?? 0) > 0;
+
+  const withRedisTimeout = async <T>(
+    operation: Promise<T>,
+    fallback: T
+  ): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<T>((resolve) => {
+          timer = setTimeout(() => resolve(fallback), REDIS_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return fallback;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
+  const isUserOnline = async (userId: string): Promise<boolean> => {
+    if (isUserLocallyOnline(userId)) return true;
+
+    const redisValue = await withRedisTimeout(
+      redisClient.get(`online:${userId}`),
+      null
+    );
+
+    return Boolean(redisValue);
+  };
+
   const emitToCallMembers = (
     call: ActiveCallSession,
     event: string,
@@ -106,16 +161,7 @@ export const initializeSocket = (io: Server) => {
     // Join the personal room before advertising the user as online so an
     // incoming call cannot be emitted to a room the socket has not joined yet.
     socket.join(userId);
-
-    // Redis should not prevent Socket.IO message handlers from registering.
-    try {
-      await redisClient.set(`socket:${userId}`, socket.id);
-      await redisClient.set(`online:${userId}`, "1");
-
-      console.log("Redis online status updated:", userId);
-    } catch (error) {
-      console.error("Redis online status error:", error);
-    }
+    markUserOnline(userId);
 
     io.emit("user_status", {
       userId,
@@ -123,21 +169,47 @@ export const initializeSocket = (io: Server) => {
       lastSeen: null,
     });
 
-    try {
-      const userGroups = await groupService.getGroupsForUser(userId);
-      userGroups.forEach((group) => {
-        const groupId = group._id.toString();
-        allowedGroupIds.add(groupId);
-        socket.join(`group:${groupId}`);
-      });
-    } catch (error) {
-      console.error("Failed to join group rooms:", error);
-    }
+    // Presence persistence and group room joins are best-effort. They run in
+    // the background so a slow/unreachable Redis or database cannot delay the
+    // registration of the message/call handlers below.
+    void (async () => {
+      try {
+        await withRedisTimeout(
+          redisClient.set(`socket:${userId}`, socket.id),
+          "OK"
+        );
+        await withRedisTimeout(
+          redisClient.set(`online:${userId}`, "1"),
+          "OK"
+        );
+
+        console.log("Redis online status updated:", userId);
+      } catch (error) {
+        console.error("Redis online status error:", error);
+      }
+    })();
+
+    void (async () => {
+      try {
+        const userGroups = await groupService.getGroupsForUser(userId);
+        userGroups.forEach((group) => {
+          const groupId = group._id.toString();
+          allowedGroupIds.add(groupId);
+          socket.join(`group:${groupId}`);
+        });
+      } catch (error) {
+        console.error("Failed to join group rooms:", error);
+      }
+    })();
 
     socket.on("get_online_users", async () => {
-      const keys = await redisClient.keys("online:*");
-      const onlineUserIds = keys.map((k) => k.replace("online:", ""));
-      socket.emit("online_users", onlineUserIds);
+      const keys = await withRedisTimeout(
+        redisClient.keys("online:*"),
+        [] as string[]
+      );
+      const onlineUserIds = new Set(localOnlineSockets.keys());
+      keys.forEach((key) => onlineUserIds.add(key.replace("online:", "")));
+      socket.emit("online_users", [...onlineUserIds]);
     });
 
     socket.on("join_groups", async (groupIds: string[]) => {
@@ -225,7 +297,7 @@ export const initializeSocket = (io: Server) => {
 
           void (async () => {
             try {
-              const isOnline = await redisClient.get(`online:${data.receiverId}`);
+              const isOnline = await isUserOnline(data.receiverId);
 
               if (!isOnline) {
                 const preview =
@@ -378,9 +450,7 @@ export const initializeSocket = (io: Server) => {
                 memberIds
                   .filter((memberId) => memberId !== userId)
                   .map(async (memberId) => {
-                    const isOnline = await redisClient.get(
-                      `online:${memberId}`
-                    );
+                    const isOnline = await isUserOnline(memberId);
 
                     if (!isOnline) {
                       await notificationService.notifyMessage(
@@ -554,7 +624,6 @@ export const initializeSocket = (io: Server) => {
             targetIds = [targetUserId];
           }
 
-          const onlineTargetIds: string[] = [];
           const busyUserIds = new Set<string>();
 
           for (const activeCall of activeCalls.values()) {
@@ -566,13 +635,15 @@ export const initializeSocket = (io: Server) => {
             });
           }
 
-          for (const targetId of targetIds) {
-            if (busyUserIds.has(targetId)) continue;
-
-            if (await redisClient.get(`online:${targetId}`)) {
-              onlineTargetIds.push(targetId);
-            }
-          }
+          const candidates = targetIds.filter(
+            (targetId) => !busyUserIds.has(targetId)
+          );
+          const onlineFlags = await Promise.all(
+            candidates.map((targetId) => isUserOnline(targetId))
+          );
+          const onlineTargetIds = candidates.filter(
+            (_targetId, index) => onlineFlags[index]
+          );
 
           if (onlineTargetIds.length === 0) {
             socket.emit("call_unavailable", {
@@ -909,6 +980,8 @@ export const initializeSocket = (io: Server) => {
 
     socket.on("disconnect", async () => {
       console.log(`❌ User disconnected: ${userId}`);
+      markUserOffline(userId);
+      const stillOnline = isUserLocallyOnline(userId);
 
       for (const [callId, call] of activeCalls) {
         if (
@@ -935,16 +1008,22 @@ export const initializeSocket = (io: Server) => {
         }
       }
 
-      try {
-        await redisClient.del(`socket:${userId}`);
-        await redisClient.del(`online:${userId}`);
-      } catch (error) {
-        console.error("Redis disconnect cleanup error:", error);
+      if (!stillOnline) {
+        void withRedisTimeout(
+          Promise.all([
+            redisClient.del(`socket:${userId}`),
+            redisClient.del(`online:${userId}`),
+          ]),
+          [0, 0]
+        );
       }
 
       const lastSeen = new Date();
       await User.findByIdAndUpdate(userId, { lastSeen });
-      io.emit("user_status", { userId, online: false, lastSeen });
+
+      if (!stillOnline) {
+        io.emit("user_status", { userId, online: false, lastSeen });
+      }
     });
   });
 };

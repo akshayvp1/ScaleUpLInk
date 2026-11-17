@@ -84,7 +84,10 @@ let currentToken: string | null = null;
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   withCredentials: true,
-  transports: ["websocket"],
+  // Prefer WebSocket but fall back to HTTP long-polling, which is required on
+  // some proxies/hosts (including Render) where WebSocket upgrades are blocked.
+  transports: ["websocket", "polling"],
+  tryAllTransports: true,
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,

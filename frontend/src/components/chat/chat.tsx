@@ -49,7 +49,10 @@ type Tab = "direct" | "groups";
 function getUserIdFromToken(token?: string | null): string {
   if (!token) return "";
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    const payloadPart = token.split(".")[1] ?? "";
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
     return payload.id || payload._id || "";
   } catch {
     return "";
@@ -112,6 +115,7 @@ export default function Chat() {
   const currentUserId =
     authUser?._id ||
     authUser?.id ||
+    getUserIdFromToken(authToken) ||
     getUserIdFromToken(authUser?.token) ||
     "";
 
