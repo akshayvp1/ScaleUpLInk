@@ -15,6 +15,7 @@ import {
   CheckCheck,
   Clock,
   AlertCircle,
+  Home,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -114,6 +115,34 @@ function Avatar({
   );
 }
 
+function ChatBreadcrumbs({ onMessages }: { onMessages: () => void }) {
+  const navigate = useNavigate();
+
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+    >
+      <button
+        type="button"
+        onClick={() => navigate("/home")}
+        className="inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <Home className="h-3.5 w-3.5" />
+        Home
+      </button>
+      <span aria-hidden="true">/</span>
+      <button
+        type="button"
+        onClick={onMessages}
+        className="shrink-0 rounded px-1 py-0.5 font-semibold text-foreground transition-colors hover:bg-muted"
+      >
+        Messages
+      </button>
+    </nav>
+  );
+}
+
 export default function Chat() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -198,8 +227,21 @@ export default function Chat() {
     fetchGroups();
   }, [dispatch]);
 
-  // Deep-link from a message notification into the right conversation.
+  // Deep-link from a notification, and keep browser back/forward in sync.
   useEffect(() => {
+    const clearSelection = () => {
+      dispatch(setSelectedContact(null));
+      dispatch(setSelectedGroup(null));
+      setShowSidebar(true);
+      setIsTyping(false);
+      setShowContactInfo(false);
+    };
+
+    if (!targetUserId && !targetGroupId) {
+      clearSelection();
+      return;
+    }
+
     if (targetGroupId && groups.length > 0) {
       const group = groups.find((item) => item._id === targetGroupId);
 
@@ -208,6 +250,8 @@ export default function Chat() {
         dispatch(setSelectedContact(null));
         dispatch(resetGroupUnread(group._id));
         setShowSidebar(false);
+      } else if (selectedGroupRef.current !== targetGroupId) {
+        clearSelection();
       }
 
       return;
@@ -222,6 +266,8 @@ export default function Chat() {
         dispatch(resetContactUnread(contact._id));
         setShowSidebar(false);
         setIsTyping(false);
+      } else if (selectedContactRef.current?._id !== targetUserId) {
+        clearSelection();
       }
     }
   }, [targetUserId, targetGroupId, groups, contacts, dispatch]);
@@ -382,12 +428,28 @@ export default function Chat() {
     };
   }, [currentUserId, authToken, dispatch]);
 
+  function goToMessages() {
+    dispatch(setSelectedContact(null));
+    dispatch(setSelectedGroup(null));
+    setShowSidebar(true);
+    setIsTyping(false);
+    setShowContactInfo(false);
+
+    if (targetUserId || targetGroupId) {
+      navigate("/chat", { replace: true });
+    }
+  }
+
   function selectContact(user: UserList) {
     dispatch(setSelectedContact(user));
     dispatch(setSelectedGroup(null));
     dispatch(resetContactUnread(user._id));
     setShowSidebar(false);
     setIsTyping(false);
+
+    if (targetUserId !== user._id || targetGroupId) {
+      navigate(`/chat?userId=${encodeURIComponent(user._id)}`);
+    }
   }
 
   function selectGroup(group: Group) {
@@ -395,6 +457,10 @@ export default function Chat() {
     dispatch(setSelectedContact(null));
     dispatch(resetGroupUnread(group._id));
     setShowSidebar(false);
+
+    if (targetGroupId !== group._id || targetUserId) {
+      navigate(`/chat?groupId=${encodeURIComponent(group._id)}`);
+    }
   }
 
   function emitMessage(payload: {
@@ -513,15 +579,15 @@ export default function Chat() {
   const nothingSelected = !selectedContact && !selectedGroup;
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-background font-sans">
+    <div className="flex h-dvh w-full min-h-0 overflow-hidden bg-background font-sans">
       {/* Sidebar */}
       <div
         className={`${
           showSidebar ? "flex" : "hidden md:flex"
         } h-full min-h-0 w-full shrink-0 flex-col border-r border-border/70 bg-card md:w-80 xl:w-[360px]`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-lg font-extrabold text-foreground [font-family:var(--font-display)]">Chats</p>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+          <ChatBreadcrumbs onMessages={goToMessages} />
           <Button
             variant="ghost"
             size="icon"
@@ -638,21 +704,26 @@ export default function Chat() {
           showSidebar ? "hidden md:flex" : "flex"
         } min-h-0 h-full min-w-0 flex-1 flex-col bg-muted/20`}
       >
+        <div className="hidden shrink-0 items-center border-b border-border/70 bg-card px-4 py-2 md:flex">
+          <ChatBreadcrumbs onMessages={goToMessages} />
+        </div>
+
         {selectedGroup && (
           <GroupChat
             selectedGroup={selectedGroup}
-            onBack={() => setShowSidebar(true)}
+            onBack={goToMessages}
           />
         )}
 
         {/* DM Chat */}
         {selectedContact && !selectedGroup && (
-          <div className="flex h-full min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
             {/* Header - Fixed */}
             <div className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-card px-4 py-3 shadow-sm">
               <button
                 type="button"
-                onClick={() => setShowSidebar(true)}
+                onClick={goToMessages}
+                aria-label="Back to messages"
                 className="mr-1 text-muted-foreground hover:text-foreground md:hidden"
               >
                 <ArrowLeft className="h-5 w-5" />

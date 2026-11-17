@@ -70,12 +70,13 @@ export function AppShell({
 
   if (isChatRoute) {
     return (
-      <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+      <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
         <Outlet />
         {children}
       </div>
     );
   }
+
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background text-foreground">

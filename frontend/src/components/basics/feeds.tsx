@@ -381,7 +381,7 @@ const SocialPost: React.FC = () => {
     dispatch(setSelectedGroup(null));
     dispatch(setSelectedContact(contact));
 
-    navigate('/chat');
+    navigate(`/chat?userId=${encodeURIComponent(contact._id)}`);
   };
   // -------------------------------------------------------------------------
 

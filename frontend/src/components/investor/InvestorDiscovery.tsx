@@ -248,7 +248,7 @@ export default function InvestorDiscovery() {
 
     dispatch(setSelectedGroup(null));
     dispatch(setSelectedContact(contact));
-    navigate("/chat");
+    navigate(`/chat?userId=${encodeURIComponent(contact._id)}`);
   };
 
   const renderAction = (investor: InvestorSummary) => {

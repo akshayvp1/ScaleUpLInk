@@ -604,7 +604,7 @@ const ProfileComponent: React.FC = () => {
     dispatch(setSelectedGroup(null));
     dispatch(setSelectedContact(contact));
 
-    navigate('/chat');
+    navigate(`/chat?userId=${encodeURIComponent(targetId)}`);
   };
 
   // ---- Connection actions -------------------------------------------------
