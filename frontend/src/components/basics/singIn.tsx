@@ -14,10 +14,20 @@ import { FormField } from "../auth/FormField";
 import { PasswordInput } from "../auth/PasswordInput";
 import authService from "../../services/user/authService";
 import { useTheme } from "../theme-provider";
+import { isValidEmail } from "../../utils/authValidation";
+import { IUser } from "../../types/auth/auth.types";
 
 interface LoginCredentials {
   email: string;
   password: string;
+}
+
+function getOnboardingPath(user?: IUser | null): string {
+  if (!user?.profession) return "/profession";
+  if (!user.interests?.length && !user.interestRefs?.length) {
+    return "/choose-interest";
+  }
+  return "/mainpage/dashboard";
 }
 
 export default function LoginPage() {
@@ -39,32 +49,29 @@ export default function LoginPage() {
 
   const validateForm = () => {
     let valid = true;
-
-    setEmailError("");
-    setPasswordError("");
+    let nextEmailError = "";
+    let nextPasswordError = "";
 
     if (!email.trim()) {
       valid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email address ending with .com");
+    } else if (!isValidEmail(email)) {
+      nextEmailError = "Please enter a valid email address";
       valid = false;
     }
 
     if (!password.trim()) {
+      nextPasswordError = "Please enter your password";
       valid = false;
     }
 
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
     setIsFormValid(valid);
-  };
-
-  const validateEmail = (email: string): boolean => {
-    const regex = /^[^\s@]+@[^\s@]+\.[c][o][m]$/;
-    return regex.test(email);
+    return valid;
   };
 
   const handleSubmit = async () => {
-    validateForm();
-    if (!isFormValid) return;
+    if (!validateForm()) return;
 
     setIsLoading(true);
     setErrorMessage("");
@@ -74,21 +81,20 @@ export default function LoginPage() {
       const loginData: LoginCredentials = { email, password };
       const result = await authService.signIn(loginData);
 
-      if (result?.user?.profession) {
-        toast.success("Your login was successful!", {
-          duration: 3000,
-          position: "top-right",
-        });
-        navigate("/mainpage/dashboard");
-      } else {
-        navigate("/profession");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Login failed. Please try again.", {
+      toast.success("Your login was successful!", {
         duration: 3000,
         position: "top-right",
       });
+      navigate(getOnboardingPath(result?.user));
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Login failed. Please try again.",
+        {
+          duration: 3000,
+          position: "top-right",
+        }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +130,7 @@ const handleGoogleLoginSuccess = async (
         position: "top-right",
       });
 
-      setTimeout(() => navigate("/mainpage/dashboard"), 2000);
+      setTimeout(() => navigate(getOnboardingPath(result.user)), 2000);
     }
   } catch (error) {
     console.error("Google login verification error:", error);

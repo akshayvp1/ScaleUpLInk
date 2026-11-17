@@ -16,6 +16,7 @@ import {
 } from "./config/database";
 import { startSeatHoldCleanupJob } from "./jobs/releaseExpiredSeatHolds";
 import { initializeSocket } from "./socket/socket";
+import { seedOnboardingCatalogs } from "./utils/onboardingCatalog";
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,7 @@ app.get("/", (_req, res) => {
 const startServer = async () => {
     try {
         await connectToDatabase();
+        await seedOnboardingCatalogs();
 
         initializeSocket(io);
         startSeatHoldCleanupJob();

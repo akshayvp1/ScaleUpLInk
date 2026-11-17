@@ -1,77 +1,50 @@
 import nodemailer from "nodemailer";
-import redisClient from "../config/redisConfig"; // ✅ Import Redis Config
 
-// ✅ Email Transporter Setup
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const smtpUser = process.env.SMTP_USER || "";
+const smtpPass = process.env.SMTP_PASS || "";
+const smtpHost = process.env.SMTP_HOST || "";
+const smtpPort = Number(process.env.SMTP_PORT || (smtpHost ? 587 : 0));
+const smtpSecure =
+  process.env.SMTP_SECURE === "true" ||
+  (!process.env.SMTP_SECURE && Boolean(smtpHost && smtpPort === 465));
 
-/**
- * ✅ Send OTP via Email & Store in Redis
- * @param {string} email - Recipient Email
- * @param {string} otp - One-Time Password
- */
-export const sendOTPEmail = async (email: string, otp: string): Promise<void> => {
-  try {
-    // ✅ Ensure Redis is connected before proceeding
-    if (!redisClient.isOpen) {
-      await redisClient.connect();
-    }
+const transporter = nodemailer.createTransport(
+  smtpHost
+    ? {
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: { user: smtpUser, pass: smtpPass },
+      }
+    : {
+        service: process.env.SMTP_SERVICE || "gmail",
+        auth: { user: smtpUser, pass: smtpPass },
+      }
+);
 
-    // ✅ Store OTP in Redis with a 10-minute expiration
-    await redisClient.setEx(`otp:${email}`, 600, otp);
-
-    // ✅ Email Options
-    const mailOptions = {
-      from: process.env.SMTP_USER,
-      to: email,
-      subject: "Your OTP for Login",
-      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
-    };
-
-    // ✅ Send Email
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP sent successfully to ${email}: ${info.response}`);
-  } catch (error) {
-    console.error("❌ Failed to send OTP:", error);
-    throw new Error("Failed to send OTP email");
+export const sendOTPEmail = async (
+  email: string,
+  otp: string,
+  ttlSeconds = 600
+): Promise<void> => {
+  if (!smtpUser || !smtpPass) {
+    throw new Error("Email service is not configured. Set SMTP_USER and SMTP_PASS.");
   }
-};
 
-/**
- * ✅ Verify OTP from Redis
- * @param {string} email - User Email
- * @param {string} userOTP - Entered OTP
- * @returns {Promise<boolean>} - Returns true if OTP is valid, otherwise false
- */
-export const verifyOTP = async (email: string, userOTP: string): Promise<boolean> => {
+  const minutes = Math.max(1, Math.ceil(ttlSeconds / 60));
+  const mailOptions = {
+    from: process.env.SMTP_FROM || smtpUser,
+    to: email,
+    subject: "Your OTP for ScaleUp Link",
+    text: `Your OTP is ${otp}. It is valid for ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+  };
+
   try {
-    // ✅ Ensure Redis is connected before proceeding
-    if (!redisClient.isOpen) {
-      await redisClient.connect();
-    }
-
-    const storedOTP = await redisClient.get(`otp:${email}`);
-
-    if (!storedOTP) {
-      console.log("❌ OTP expired or not found");
-      return false;
-    }
-
-    if (storedOTP === userOTP) {
-      await redisClient.del(`otp:${email}`); // ✅ Delete OTP after successful verification
-      console.log("✅ OTP verified successfully");
-      return true;
-    }
-    
-    console.log("❌ Invalid OTP");
-    return false;
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`OTP sent successfully to ${email}: ${info.response}`);
   } catch (error) {
-    console.error("❌ OTP verification error:", error);
-    return false;
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to send OTP to ${email}:`, error);
+    throw new Error(`Failed to send OTP email: ${reason}`);
   }
 };

@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "migrate:onboarding": "npm run build && node dist/scripts/migrateOnboarding.js"
   },
   "author": "Akshay vp",
   "license": "ISC",

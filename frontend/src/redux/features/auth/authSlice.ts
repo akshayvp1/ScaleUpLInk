@@ -55,6 +55,11 @@ const authSlice = createSlice({
     setAuthenticate: (state) => {
       state.isAuthenticated = true;
     },
+    updateUser: (state, action: PayloadAction<IUser>) => {
+      state.user = { ...(state.user ?? {} as IUser), ...action.payload };
+      if (action.payload.email) state.email = action.payload.email;
+      if (action.payload.profession) state.profession = action.payload.profession;
+    },
     signOut: () => initialState,
   },
 });
@@ -67,4 +72,5 @@ const persistConfig = {
 
 export const persistedAuthReducer = persistReducer(persistConfig, authSlice.reducer);
 
-export const { signIn, setToken, setAuthenticate, signOut } = authSlice.actions;
+export const { signIn, setToken, setAuthenticate, updateUser, signOut } =
+  authSlice.actions;

@@ -10,7 +10,9 @@ export interface googleSignInResult {
 }
 
 export default interface IAuthService {
-  register(userData: Partial<IUser>): Promise<{ message: string }>;
+  register(
+    userData: Partial<IUser> & { confirmPassword?: string }
+  ): Promise<{ message: string }>;
   resendOtp(email: string): Promise<boolean>;
   signIn(
     email: string,

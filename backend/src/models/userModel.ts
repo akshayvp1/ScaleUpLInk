@@ -7,6 +7,7 @@ const UserSchema: Schema = new Schema<IUser>(
     password: { type: String, required: false },
     email: { type: String, required: true, unique: true },
     profession: { type: String },
+    professionRef: { type: mongoose.Schema.Types.ObjectId, ref: "Profession" },
     plan: {
       type: { type: String, enum: ["free", "premium"], default: "free" },
     },
@@ -31,6 +32,7 @@ const UserSchema: Schema = new Schema<IUser>(
     // ConnectionService.areConnected(userA, userB) / getConnections(userId)
     // instead of reading arrays off the user doc.
     interests: [{ type: String }],
+    interestRefs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Interest" }],
     savedPost: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     age: { type: Number },
   },

@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   email: string;
   profession?: string;
+  professionRef?: Types.ObjectId;
   _id: Types.ObjectId;
 
   plan: {
@@ -38,6 +39,7 @@ export interface IUser extends Document {
   coverImage?: string;
   followers: Types.ObjectId[];
   interests: Types.ObjectId[];
+  interestRefs?: Types.ObjectId[];
   savedPost: Types.ObjectId[];
   following: Types.ObjectId[];
   age?: number;

@@ -15,66 +15,145 @@ import {
 import { OAuth2Client } from "google-auth-library";
 import { googleSignInResult } from "../../services/entrepreneur/interface/IAuthService";
 import { sanitizeUser } from "../../utils/sanitizeUser";
+import {
+  normalizeContactNumber,
+  normalizeEmail,
+  validateEmailPayload,
+  validateLoginPayload,
+  validateOtpPayload,
+  validateRegistrationPayload,
+} from "../../utils/authValidation";
+import {
+  resolveInterests,
+  resolveProfession,
+} from "../../utils/onboardingCatalog";
 
+const configuredOtpTtl = Number(process.env.OTP_TTL_SECONDS || 600);
+const OTP_TTL_SECONDS =
+  Number.isFinite(configuredOtpTtl) && configuredOtpTtl > 0
+    ? configuredOtpTtl
+    : 600;
+const registrationKey = (email: string) => `registration:${email}`;
+const passwordResetKey = (email: string) => `password-reset:${email}`;
 
 @injectable()
 class AuthService implements IAuthService {
   constructor(@inject("UserRepository") private userRepository: UserRepository) {}
 
-  async register(userData: Partial<IUser>): Promise<{ message: string }> {
-    const existingUser = await this.userRepository.findByEmail(userData.email!);
+  async register(
+    userData: Partial<IUser> & { confirmPassword?: string }
+  ): Promise<{ message: string }> {
+    const validationError = validateRegistrationPayload(userData);
+    if (validationError) throw new Error(validationError);
+
+    const email = normalizeEmail(userData.email);
+    const contactNumber = normalizeContactNumber(userData.contactNumber);
+    const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) throw new Error("Email already registered.");
-    if (userData.role === "investor" && !userData.contactNumber) {
-      throw new Error("Investors must provide a mobile number.");
+
+    const existingContact = await this.userRepository.findByContactNumber(
+      contactNumber
+    );
+    if (existingContact && existingContact.email !== email) {
+      throw new Error("Mobile number already registered.");
     }
 
-    const otp = randomInt(100000, 999999).toString();
-    const otpData = {
-      otp,
-      userData: { ...userData },
-      expiresAt: Date.now() + 10 * 60 * 1000,
+    const {
+      confirmPassword: _confirmPassword,
+      companyName,
+      companyFounded,
+      businessRegNumber,
+      ...baseData
+    } = userData;
+
+    const registrationData: Partial<IUser> = {
+      ...baseData,
+      name: baseData.name?.trim(),
+      email,
+      contactNumber,
+      investorDetails:
+        userData.role === "investor"
+          ? {
+              companyName: companyName?.trim(),
+              companyFounded: Number(companyFounded),
+              companyRegistration: Number(businessRegNumber),
+            }
+          : baseData.investorDetails,
     };
 
-    await redisClient.set(userData.email!, JSON.stringify(otpData), { EX: 600 });
-    await sendOTPEmail(userData.email!, otp);
+    const password = registrationData.password;
+    if (!password) {
+      throw new Error("Password is required.");
+    }
+
+    const otp = randomInt(100000, 1000000).toString();
+    const passwordHash = await bcrypt.hash(password, 10);
+    const otpData = {
+      otp,
+      userData: { ...registrationData, password: passwordHash },
+      expiresAt: Date.now() + OTP_TTL_SECONDS * 1000,
+    };
+    const key = registrationKey(email);
+
+    await redisClient.set(key, JSON.stringify(otpData), { EX: OTP_TTL_SECONDS });
+    try {
+      await sendOTPEmail(email, otp, OTP_TTL_SECONDS);
+    } catch (error) {
+      await redisClient.del(key);
+      throw error;
+    }
+
     return { message: "OTP sent to email. Verify to complete registration." };
   }
 
-  async resendOtp(email: string): Promise<boolean> {
+  async resendOtp(emailValue: string): Promise<boolean> {
+    const validationError = validateEmailPayload(emailValue);
+    if (validationError) throw new Error(validationError);
+
+    const email = normalizeEmail(emailValue);
+    const key = registrationKey(email);
+    const storedData = await redisClient.get(key);
+    if (!storedData) throw new Error("OTP expired or invalid. Please register again.");
+
+    const parsedData = JSON.parse(storedData);
+    const newOtp = randomInt(100000, 1000000).toString();
+    parsedData.otp = newOtp;
+    parsedData.expiresAt = Date.now() + OTP_TTL_SECONDS * 1000;
+
+    await redisClient.set(key, JSON.stringify(parsedData), {
+      EX: OTP_TTL_SECONDS,
+    });
     try {
-      const userData = await redisClient.get(email);
-      if (!userData) throw new Error("OTP expired or invalid");
-
-      const parsedData = JSON.parse(userData);
-      const newOtp = randomInt(100000, 999999).toString();
-      parsedData.otp = newOtp;
-
-      await redisClient.set(email, JSON.stringify(parsedData), { EX: 300 });
-      await sendOTPEmail(email, newOtp);
-
-      return true;
-    } catch (error: any) {
-      throw new Error(error.message);
+      await sendOTPEmail(email, newOtp, OTP_TTL_SECONDS);
+    } catch (error) {
+      await redisClient.del(key);
+      throw error;
     }
+
+    return true;
   }
 
   async signIn(
     email: string,
     password: string
   ): Promise<{ isMatch: boolean; message: string; accessToken?: string; refreshToken?: string; user?: IUser }> {
-    try {
-      const user: IUser | null = await this.userRepository.findByEmail(email);
-      if (!user) {
-        return { isMatch: false, message: "User not found." };
-      }
+    const validationError = validateLoginPayload(email, password);
+    if (validationError) throw new Error(validationError);
 
-      if (!user.password) {
-        return { isMatch: false, message: "Incorrect password." };
+    try {
+      const normalizedEmail = normalizeEmail(email);
+      const user: IUser | null = await this.userRepository.findByEmail(
+        normalizedEmail
+      );
+      const incorrectMessage = "Incorrect email or password.";
+
+      if (!user || !user.password) {
+        return { isMatch: false, message: incorrectMessage };
       }
   
       const isMatch: boolean = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        return { isMatch: false, message: "Incorrect password." };
+        return { isMatch: false, message: incorrectMessage };
       }
   
       const payload: ITokenPayload = {
@@ -109,11 +188,18 @@ class AuthService implements IAuthService {
       const payload = ticket.getPayload();
       
 
-      if (!payload || !payload.email || !payload.given_name || !payload.family_name) {
+      if (!payload || !payload.email) {
         throw new Error("Invalid Google credentials.");
       }
 
-      const user = await this.userRepository.findByEmail(payload.email);
+      const googleName =
+        payload.name ||
+        [payload.given_name, payload.family_name].filter(Boolean).join(" ") ||
+        payload.email.split("@")[0];
+
+      const user = await this.userRepository.findByEmail(
+        normalizeEmail(payload.email)
+      );
       const partialUser = false;
 
       if (user) {
@@ -135,8 +221,8 @@ class AuthService implements IAuthService {
       }
 
       const newUser = {
-        email: payload.email,
-        name: payload.given_name,
+        email: normalizeEmail(payload.email),
+        name: googleName,
         profileImage: payload.picture,
       };
 
@@ -151,29 +237,63 @@ class AuthService implements IAuthService {
 
   
 
-  async verifyOTP(email: string, otp: string): Promise<{ user: IUser }> {
+  async verifyOTP(emailValue: string, otp: string): Promise<{ user: IUser }> {
+    const validationError = validateOtpPayload(emailValue, otp);
+    if (validationError) throw new Error(validationError);
+
+    const email = normalizeEmail(emailValue);
+    const key = registrationKey(email);
+
     try {
-      const storedData = await redisClient.get(email);
+      const storedData = await redisClient.get(key);
       if (!storedData) throw new Error("OTP not found or expired.");
       const tempData = JSON.parse(storedData);
       if (tempData.otp !== otp || Date.now() > tempData.expiresAt) {
         throw new Error("Invalid or expired OTP.");
       }
 
-      tempData.userData.password = await bcrypt.hash(tempData.userData.password, 10);
+      const existingUser = await this.userRepository.findByEmail(email);
+      if (existingUser) throw new Error("Email already registered.");
+
+      const contactNumber = normalizeContactNumber(
+        tempData.userData.contactNumber
+      );
+      if (contactNumber) {
+        const existingContact = await this.userRepository.findByContactNumber(
+          contactNumber
+        );
+        if (existingContact && existingContact.email !== email) {
+          throw new Error("Mobile number already registered.");
+        }
+      }
+
+      const passwordHash = tempData.userData.password?.startsWith("$2")
+        ? tempData.userData.password
+        : await bcrypt.hash(tempData.userData.password, 10);
+
       const userData: Partial<IUser> = {
         ...tempData.userData,
+        password: passwordHash,
+        email,
+        contactNumber,
         isBlocked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       const newUser = await this.userRepository.createUser(userData as IUser);
-      await redisClient.del(email);
+      await redisClient.del(key);
 
       return { user: sanitizeUser(newUser) as IUser };
     } catch (error: any) {
-      throw new Error("OTP verification failed.");
+      const expectedMessages = [
+        "OTP not found or expired.",
+        "Invalid or expired OTP.",
+        "Email already registered.",
+        "Mobile number already registered.",
+      ];
+      if (expectedMessages.includes(error?.message)) throw error;
+      throw new Error("OTP verification failed. Please request a new OTP.");
     }
   }
 
@@ -251,27 +371,41 @@ async addInterests(
   },
   user?: ITokenPayload
 ): Promise<IUser | null> {
-  const email = user?.email;
+  const email = normalizeEmail(user?.email);
 
   if (!email) {
     throw new Error("Unauthorized");
   }
 
-  const interests = data.interest?.filter(
-    interest => interest && interest.trim() !== ''
-  );
+  const profession = data.profession?.trim();
+  if (!profession) {
+    throw new Error("Please select a profession.");
+  }
 
+  const interests = Array.from(
+    new Set((data.interest ?? []).map((item) => item.trim()).filter(Boolean))
+  );
+  if (interests.length === 0) {
+    throw new Error("Please select at least one interest.");
+  }
+  if (interests.length > 10) {
+    throw new Error("Please select no more than 10 interests.");
+  }
 
   const existingUser = await this.userRepository.findUserByEmail(email);
   if (!existingUser) {
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
-  // Add interests
+  const professionDoc = await resolveProfession(profession);
+  const interestDocs = await resolveInterests(interests);
+
   return await this.userRepository.addInterests(
-    email, 
-    interests || [], 
-    data.profession
+    email,
+    interestDocs.map((item) => item.label),
+    professionDoc?.label ?? profession,
+    professionDoc?._id,
+    interestDocs.map((item) => item._id)
   );
 }
 async updateData(
@@ -307,42 +441,54 @@ async getUser(userId: string): Promise<IUser | null> {
     return null; 
   }
 }
-async otpForgotPassword(email: string): Promise<boolean> {
+async otpForgotPassword(emailValue: string): Promise<boolean> {
+  const validationError = validateEmailPayload(emailValue);
+  if (validationError) throw new Error(validationError);
+
+  const email = normalizeEmail(emailValue);
   try {
       const user = await this.userRepository.findByEmail(email);
-      if (!user) {
-          console.log("User not found");
-          return false;
+      if (!user) return false;
+
+      const newOtp = randomInt(100000, 1000000).toString();
+      const key = passwordResetKey(email);
+      const parsedData = {
+        otp: newOtp,
+        expiresAt: Date.now() + OTP_TTL_SECONDS * 1000,
+      };
+
+      await redisClient.set(key, JSON.stringify(parsedData), {
+        EX: OTP_TTL_SECONDS,
+      });
+      try {
+        await sendOTPEmail(email, newOtp, OTP_TTL_SECONDS);
+      } catch (error) {
+        await redisClient.del(key);
+        throw error;
       }
-
-      const newOtp = randomInt(100000, 999999).toString();
-
-      const parsedData = { otp: newOtp };
-
-      await redisClient.set(email, JSON.stringify(parsedData), { EX: 300 });
-      await sendOTPEmail(email, newOtp); 
 
       return true;
   } catch (error) {
       console.error("Error in otpForgotPassword:", error);
-      return false;
+      throw error;
   }
- 
 }
-async verifyForgotOtp(email: string, otp: string): Promise<string | null> {
+async verifyForgotOtp(emailValue: string, otp: string): Promise<string | null> {
+  const validationError = validateOtpPayload(emailValue, otp);
+  if (validationError) throw new Error(validationError);
+
+  const email = normalizeEmail(emailValue);
+  const key = passwordResetKey(email);
   try {
-      const storedData = await redisClient.get(email);
-      if (!storedData) {
-          return null;
-      }
+      const storedData = await redisClient.get(key);
+      if (!storedData) return null;
 
       const tempData = JSON.parse(storedData);
-
-      if (tempData.otp !== otp) {
-          return null;
+      if (tempData.otp !== otp || Date.now() > tempData.expiresAt) {
+        return null;
       }
 
-      await redisClient.del(email);
+      await redisClient.del(key);
       return generatePasswordResetToken(email);
   } catch (error) {
       console.error("Error in verifyForgotOtp:", error);

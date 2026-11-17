@@ -13,6 +13,15 @@ import { FormField } from "../auth/FormField";
 import { PasswordInput } from "../auth/PasswordInput";
 import authService from "../../services/user/authService";
 import { cn } from "../../lib/utils";
+import {
+  isValidBusinessRegNumber,
+  isValidCompanyName,
+  isValidEmail,
+  isValidFoundingYear,
+  isValidMobile,
+  isValidName,
+  isValidPassword,
+} from "../../utils/authValidation";
 
 interface RegisterCredentials {
   name: string;
@@ -59,6 +68,7 @@ export default function RegisterPage() {
     const isValid = await trigger([
       "name",
       "email",
+      "contactNumber",
       "password",
       "confirmPassword",
     ]);
@@ -73,13 +83,14 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       const signupData = {
-        name: data.name,
-        email: data.email,
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
         password: data.password,
+        confirmPassword: data.confirmPassword,
         companyName: data.companyName,
         companyFounded: data.companyFounded,
         businessRegNumber: data.businessRegNumber,
-        contactNumber: data.contactNumber,
+        contactNumber: data.contactNumber.trim(),
         role: data.role,
       };
 
@@ -90,8 +101,10 @@ export default function RegisterPage() {
 
       setSuccessMessage("OTP Sent Successfully 🎉");
       navigate("/otp");
-    } catch {
-      setErrorMessage("Registration failed. Please try again.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Registration failed. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -168,11 +181,9 @@ export default function RegisterPage() {
                 error={
                   errors.name?.type === "required"
                     ? "Please enter your name"
-                    : errors.name?.type === "minLength"
-                      ? "Name must be at least 5 characters"
-                      : errors.name?.type === "pattern"
-                        ? "Name must start with a capital letter and contain only letters"
-                        : undefined
+                    : errors.name?.type === "validate"
+                      ? "Use 2-80 letters, spaces, hyphens, apostrophes or periods"
+                      : undefined
                 }
               >
                 <Input
@@ -182,8 +193,9 @@ export default function RegisterPage() {
                   placeholder="Jane Doe"
                   {...register("name", {
                     required: true,
-                    minLength: 5,
-                    pattern: /^[A-Z][a-zA-Z]*$/,
+                    validate: (value) =>
+                      isValidName(value) ||
+                      "Use 2-80 letters, spaces, hyphens, apostrophes or periods",
                   })}
                   aria-invalid={Boolean(errors.name)}
                 />
@@ -196,8 +208,8 @@ export default function RegisterPage() {
                 error={
                   errors.email?.type === "required"
                     ? "Please enter your email"
-                    : errors.email?.type === "pattern"
-                      ? "Email must end with .com and cannot contain spaces or special characters"
+                    : errors.email?.type === "validate"
+                      ? "Enter a valid email address"
                       : undefined
                 }
               >
@@ -208,9 +220,37 @@ export default function RegisterPage() {
                   placeholder="you@company.com"
                   {...register("email", {
                     required: true,
-                    pattern: /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.com$/,
+                    validate: (value) =>
+                      isValidEmail(value) || "Enter a valid email address",
                   })}
                   aria-invalid={Boolean(errors.email)}
+                />
+              </FormField>
+
+              <FormField
+                id="contactNumber"
+                label="Contact number"
+                required
+                error={
+                  errors.contactNumber?.type === "required"
+                    ? "Please enter your contact number"
+                    : errors.contactNumber?.type === "validate"
+                      ? "Use a valid 10-digit mobile number starting with 6-9"
+                      : undefined
+                }
+              >
+                <Input
+                  id="contactNumber"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="9876543210"
+                  {...register("contactNumber", {
+                    required: true,
+                    validate: (value) =>
+                      isValidMobile(value) ||
+                      "Use a valid 10-digit mobile number starting with 6-9",
+                  })}
+                  aria-invalid={Boolean(errors.contactNumber)}
                 />
               </FormField>
 
@@ -221,12 +261,9 @@ export default function RegisterPage() {
                 error={
                   errors.password?.type === "required"
                     ? "Please enter a password"
-                    : errors.password?.type === "minLength" ||
-                        errors.password?.type === "maxLength"
-                      ? "Password must be between 8-16 characters"
-                      : errors.password?.type === "pattern"
-                        ? "Password must contain uppercase, lowercase, number, special character, and no spaces"
-                        : undefined
+                    : errors.password?.type === "validate"
+                      ? "Password must be 8-16 characters with upper, lower, number and symbol"
+                      : undefined
                 }
                 hint="8-16 characters with upper & lowercase, a number and a symbol."
               >
@@ -236,10 +273,9 @@ export default function RegisterPage() {
                   placeholder="Create a password"
                   {...register("password", {
                     required: true,
-                    minLength: 8,
-                    maxLength: 16,
-                    pattern:
-                      /^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9])(?!.*\s).{8,16}$/,
+                    validate: (value) =>
+                      isValidPassword(value) ||
+                      "Password must be 8-16 characters with upper, lower, number and symbol",
                   })}
                   aria-invalid={Boolean(errors.password)}
                 />
@@ -301,11 +337,9 @@ export default function RegisterPage() {
                 error={
                   errors.companyName?.type === "required"
                     ? "Please enter company name"
-                    : errors.companyName?.type === "minLength"
-                      ? "Company name must be at least 5 characters"
-                      : errors.companyName?.type === "pattern"
-                        ? "Company name must contain only letters"
-                        : undefined
+                    : errors.companyName?.type === "validate"
+                      ? "Use 2-80 letters, digits, spaces, &, hyphens, apostrophes or periods"
+                      : undefined
                 }
               >
                 <Input
@@ -315,8 +349,9 @@ export default function RegisterPage() {
                   placeholder="Acme Ventures"
                   {...register("companyName", {
                     required: true,
-                    minLength: 5,
-                    pattern: /^[a-zA-Z]+$/,
+                    validate: (value) =>
+                      isValidCompanyName(value) ||
+                      "Use 2-80 letters, digits, spaces, &, hyphens, apostrophes or periods",
                   })}
                   aria-invalid={Boolean(errors.companyName)}
                 />
@@ -329,8 +364,8 @@ export default function RegisterPage() {
                 error={
                   errors.companyFounded?.type === "required"
                     ? "Please enter founding year"
-                    : errors.companyFounded?.type === "pattern"
-                      ? "Year must be between 1900-2025 with 4 digits"
+                    : errors.companyFounded?.type === "validate"
+                      ? "Enter a 4-digit year between 1900 and this year"
                       : undefined
                 }
               >
@@ -341,7 +376,9 @@ export default function RegisterPage() {
                   placeholder="2018"
                   {...register("companyFounded", {
                     required: true,
-                    pattern: /^(19[0-9][0-9]|20[0-1][0-9]|202[0-5])$/,
+                    validate: (value) =>
+                      isValidFoundingYear(value) ||
+                      "Enter a 4-digit year between 1900 and this year",
                   })}
                   aria-invalid={Boolean(errors.companyFounded)}
                 />
@@ -354,12 +391,9 @@ export default function RegisterPage() {
                 error={
                   errors.businessRegNumber?.type === "required"
                     ? "Please enter registration number"
-                    : errors.businessRegNumber?.type === "minLength" ||
-                        errors.businessRegNumber?.type === "maxLength"
-                      ? "Registration number must be between 5-8 characters"
-                      : errors.businessRegNumber?.type === "pattern"
-                        ? "Registration number cannot contain spaces"
-                        : undefined
+                    : errors.businessRegNumber?.type === "validate"
+                      ? "Use 5-12 digits only"
+                      : undefined
                 }
               >
                 <Input
@@ -368,36 +402,11 @@ export default function RegisterPage() {
                   placeholder="12345"
                   {...register("businessRegNumber", {
                     required: true,
-                    minLength: 5,
-                    maxLength: 8,
-                    pattern: /^\S{5,8}$/,
+                    validate: (value) =>
+                      isValidBusinessRegNumber(value) ||
+                      "Use 5-12 digits only",
                   })}
                   aria-invalid={Boolean(errors.businessRegNumber)}
-                />
-              </FormField>
-
-              <FormField
-                id="contactNumber"
-                label="Contact number"
-                required
-                error={
-                  errors.contactNumber?.type === "required"
-                    ? "Please enter contact number"
-                    : errors.contactNumber?.type === "pattern"
-                      ? "Contact number must start with 6, 7, 8, or 9 and be 10 digits"
-                      : undefined
-                }
-              >
-                <Input
-                  id="contactNumber"
-                  type="tel"
-                  autoComplete="tel"
-                  placeholder="9876543210"
-                  {...register("contactNumber", {
-                    required: true,
-                    pattern: /^[6789]\d{9}$/,
-                  })}
-                  aria-invalid={Boolean(errors.contactNumber)}
                 />
               </FormField>
 

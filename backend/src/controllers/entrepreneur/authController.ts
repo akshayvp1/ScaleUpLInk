@@ -372,9 +372,17 @@ class AuthController implements IAuthController {
 
   private handleError(res: Response, error: unknown): void {
     if (error instanceof Error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({
+        success: false,
+        message: error.message,
+        error: error.message,
+      });
     } else {
-      res.status(500).json({ error: "An unexpected error occurred" });
+      res.status(500).json({
+        success: false,
+        message: "An unexpected error occurred",
+        error: "An unexpected error occurred",
+      });
     }
   }
 }

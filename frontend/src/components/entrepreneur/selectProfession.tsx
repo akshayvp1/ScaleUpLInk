@@ -5,27 +5,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { Check } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  FaUserTie,
   FaHandshake,
-  FaLaptopCode,
-  FaUserFriends,
-  FaPencilRuler,
-  FaHeartbeat,
-  FaChair,
+  FaUserTie,
   FaChartLine,
-  FaBalanceScale,
-  FaShoppingCart,
-  FaNewspaper,
   FaBuilding,
-  FaNetworkWired,
+  FaChair,
+  FaUserFriends,
+  FaBriefcase,
   FaCog,
 } from "react-icons/fa";
 import { BsThreeDots } from "react-icons/bs";
 
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { AuthLayout } from "../auth/AuthLayout";
 import { AuthHeader } from "../auth/AuthHeader";
-import { RootState, store } from "../../redux/app/store";
+import { RootState } from "../../redux/app/store";
 import { setTempUser } from "../../redux/features/auth/tempSlice";
 import { cn } from "../../lib/utils";
 
@@ -36,58 +31,64 @@ interface ProfessionOption {
 }
 
 const professions: ProfessionOption[] = [
-  { id: "executive", label: "Executive & Leadership", icon: <FaUserTie size={20} /> },
-  { id: "business", label: "Business", icon: <FaHandshake size={20} /> },
-  { id: "technology", label: "Technology & IT", icon: <FaLaptopCode size={20} /> },
-  { id: "hr", label: "Human Resources", icon: <FaUserFriends size={20} /> },
-  { id: "creative", label: "Creative & Design", icon: <FaPencilRuler size={20} /> },
-  { id: "healthcare", label: "Healthcare & Medical", icon: <FaHeartbeat size={20} /> },
-  { id: "managing", label: "Managing Director", icon: <FaChair size={20} /> },
-  { id: "account", label: "Account Management", icon: <FaChartLine size={20} /> },
-  { id: "engineering", label: "Engineering", icon: <FaCog size={20} /> },
-  { id: "legal", label: "Legal & Compliance", icon: <FaBalanceScale size={20} /> },
-  { id: "sales", label: "Sales & Customer Service", icon: <FaShoppingCart size={20} /> },
-  { id: "marketing", label: "Marketing", icon: <FaNetworkWired size={20} /> },
-  { id: "media", label: "Media & Entertainment", icon: <FaNewspaper size={20} /> },
-  { id: "construction", label: "Construction & Real Estate", icon: <FaBuilding size={20} /> },
-  { id: "others", label: "Others", icon: <BsThreeDots size={20} /> },
+  { id: "investor", label: "Investor", icon: <FaHandshake size={20} /> },
+  { id: "angel_investor", label: "Angel Investor", icon: <FaUserTie size={20} /> },
+  {
+    id: "venture_capitalist",
+    label: "Venture Capitalist",
+    icon: <FaChartLine size={20} />,
+  },
+  { id: "entrepreneur", label: "Entrepreneur", icon: <FaBuilding size={20} /> },
+  {
+    id: "startup_founder",
+    label: "Startup Founder",
+    icon: <FaChair size={20} />,
+  },
+  { id: "business_owner", label: "Business Owner", icon: <FaUserTie size={20} /> },
+  { id: "co_founder", label: "Co-founder", icon: <FaUserFriends size={20} /> },
+  {
+    id: "business_executive",
+    label: "Business Executive",
+    icon: <FaBriefcase size={20} />,
+  },
+  { id: "other", label: "Other", icon: <FaCog size={20} /> },
 ];
+
+const OTHER_ICON = <BsThreeDots size={20} />;
 
 export default function ProfessionSelectionPage() {
   const [selectedProfession, setSelectedProfession] = useState<string | null>(
     null
   );
+  const [customProfession, setCustomProfession] = useState("");
   const dispatch = useDispatch();
   const tempUser = useSelector((state: RootState) => state.tempUser.tempUser);
   const navigate = useNavigate();
 
+  const isOther = selectedProfession === "other";
+  const canContinue = Boolean(
+    selectedProfession && (!isOther || customProfession.trim().length >= 2)
+  );
+
   const handleSelect = (id: string) => {
     setSelectedProfession(id);
-    dispatch(
-      setTempUser({
-        tempUser: {
-          ...tempUser,
-          profession: id,
-        },
-      })
-    );
+    if (id !== "other") setCustomProfession("");
   };
 
   const handleContinue = () => {
-    const user = store.getState().tempUser;
+    if (!canContinue) return;
 
-    if (user) {
-      toast.success("Your profession has been selected successfully!", {
-        position: "top-right",
-        duration: 3000,
-        style: {
-          background: "var(--card)",
-          color: "var(--card-foreground)",
-          borderRadius: "8px",
-        },
-      });
-      navigate("/choose-interest");
-    }
+    const selected = professions.find((item) => item.id === selectedProfession);
+    const profession = isOther
+      ? customProfession.trim()
+      : (selected?.label ?? "");
+
+    dispatch(setTempUser({ tempUser: { ...tempUser, profession } }));
+    toast.success("Your profession has been selected successfully!", {
+      position: "top-right",
+      duration: 3000,
+    });
+    navigate("/choose-interest");
   };
 
   return (
@@ -131,18 +132,35 @@ export default function ProfessionSelectionPage() {
                     <Check className="size-3" />
                   </span>
                 )}
-                <span className="text-foreground">{profession.icon}</span>
+                <span className="text-foreground">
+                  {profession.id === "other" ? OTHER_ICON : profession.icon}
+                </span>
                 <span className="text-xs font-medium">{profession.label}</span>
               </motion.button>
             );
           })}
         </div>
 
+        {isOther && (
+          <div className="space-y-2">
+            <label htmlFor="customProfession" className="text-sm font-medium">
+              Tell us your profession
+            </label>
+            <Input
+              id="customProfession"
+              value={customProfession}
+              onChange={(event) => setCustomProfession(event.target.value)}
+              placeholder="e.g. Product Manager"
+              maxLength={80}
+            />
+          </div>
+        )}
+
         <div className="flex justify-center">
           <Button
             size="lg"
             className="w-full sm:w-auto sm:px-10"
-            disabled={!selectedProfession}
+            disabled={!canContinue}
             onClick={handleContinue}
           >
             Continue

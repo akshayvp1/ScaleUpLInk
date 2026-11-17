@@ -29,6 +29,7 @@ export enum UserRole {
   
     // Social and platform-specific fields
     interests?: string[];
+    interestRefs?: string[];
     savedPost?: string[];
     followers?: string[];
     following?: string[];

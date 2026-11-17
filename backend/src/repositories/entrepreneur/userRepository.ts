@@ -2,7 +2,7 @@
 import { injectable, inject } from "tsyringe";
 import { IUser } from "../../interfaces/IUser";
 import { IUserRepository } from "../entrepreneur/interface/IUserRepository";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 
 @injectable()
 class UserRepository implements IUserRepository {
@@ -60,6 +60,15 @@ class UserRepository implements IUserRepository {
     }
   }
 
+  async findByContactNumber(contactNumber: string): Promise<IUser | null> {
+    try {
+      const user = await this.model.findOne({ contactNumber });
+      return user as IUser | null;
+    } catch (error) {
+      throw new Error("Error finding user by contact number: " + error);
+    }
+  }
+
   async findUserById(id: string): Promise<IUser | null> {
     try {
       const user = await this.model
@@ -75,18 +84,22 @@ class UserRepository implements IUserRepository {
   async addInterests(
     email: string,
     interests: string[],
-    profession?: string
+    profession?: string,
+    professionRef?: Types.ObjectId,
+    interestRefs?: Types.ObjectId[]
   ): Promise<IUser | null> {
     try {
       const user = await this.model.findOneAndUpdate(
         { email },
         {
           $addToSet: {
-            interests: {
-              $each: interests
-            }
+            interests: { $each: interests },
+            ...(interestRefs?.length
+              ? { interestRefs: { $each: interestRefs } }
+              : {}),
           },
-          ...(profession && { profession })
+          ...(profession && { profession }),
+          ...(professionRef && { professionRef }),
         },
         { new: true }
       ).select("-password");

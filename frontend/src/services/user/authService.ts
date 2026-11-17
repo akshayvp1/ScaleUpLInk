@@ -1,6 +1,6 @@
 import { api } from "../../utils/axiosInterceptor";
 import { store } from "../../redux/app/store";
-import { signIn, signOut } from "../../redux/features/auth/authSlice";
+import { signIn, signOut, updateUser } from "../../redux/features/auth/authSlice";
 import { setTempUser } from "../../redux/features/auth/tempSlice";
 import { IUser, UserRole } from "../../types/auth/auth.types";
 import axios from "axios";
@@ -9,6 +9,7 @@ interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
+  confirmPassword?: string;
   companyName?: string;
   companyFounded?: string;
   businessRegNumber?: string;
@@ -37,7 +38,7 @@ interface IAuthServiceEntrepreneur {
   verifyGoogleToken(credential: string): Promise<GoogleSignInResult>;
   completeProfile(userData: Partial<IUser>): Promise<void>;
   entrepeneruRole(userData: Partial<IUser>): Promise<void>;
-  addInterests(data: InterestData): Promise<void>;
+  addInterests(data: InterestData): Promise<IUser | null>;
   updateDetail(data: updateData): Promise<void>;
   getUserById(userId: string): Promise<IUser | null>;
 }
@@ -50,6 +51,16 @@ type GoogleSignInResult = {
   accessToken?: string;
 };
 
+function getApiError(error: unknown, fallback: string): Error {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | { message?: string; error?: string }
+      | undefined;
+    return new Error(data?.message || data?.error || fallback);
+  }
+  return error instanceof Error ? error : new Error(fallback);
+}
+
 class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
   async sendOtp(credentials: RegisterCredentials, role: "entrepreneur" | "investor"): Promise<MockSignUpResult> {
     try {
@@ -61,10 +72,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
       );
       return response.data;
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Failed to send OTP");
-      }
-      throw new Error("An unknown error occurred while sending OTP");
+      throw getApiError(error, "Failed to send OTP");
     }
   }
 
@@ -73,10 +81,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
       const response = await api[role].post("/resend-otp", { email });
       return response.data;
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Failed to send OTP");
-      }
-      throw new Error("An unknown error occurred while sending OTP");
+      throw getApiError(error, "Failed to send OTP");
     }
   }
 
@@ -89,10 +94,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
         })
       );
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Invalid OTP");
-      }
-      throw new Error("An unknown error occurred during OTP verification");
+      throw getApiError(error, "Invalid OTP");
     }
   }
 
@@ -122,10 +124,7 @@ class AuthServiceEntrepreneur implements IAuthServiceEntrepreneur {
 
       return { user, accessToken };
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Login failed");
-      }
-      throw error;
+      throw getApiError(error, "Login failed");
     }
   }
 
@@ -186,16 +185,7 @@ async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
 
   } catch (error) {
     console.error("Google Authentication Error:", error);
-
-    if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.message || "Google authentication failed"
-      );
-    }
-
-    throw error instanceof Error
-      ? error
-      : new Error("An unknown error occurred during Google authentication");
+    throw getApiError(error, "Google authentication failed");
   }
 }
 
@@ -262,18 +252,21 @@ async verifyGoogleToken(credential: string): Promise<GoogleSignInResult> {
     }
   }
 
-  async addInterests(data: InterestData): Promise<void> {
+  async addInterests(data: InterestData): Promise<IUser | null> {
     try {
-      const response = await api.shared.patch("/addInterests", data);
-      if (response.data.user) {
-        store.dispatch(setTempUser({ tempUser: response.data.user }));
+      const response = await api.shared.patch<{ user?: IUser }>(
+        "/addInterests",
+        data
+      );
+      const user = response.data.user ?? null;
+      if (user) {
+        store.dispatch(setTempUser({ tempUser: user }));
+        store.dispatch(updateUser(user));
       }
+      return user;
     } catch (error) {
       console.error("Error adding interests:", error);
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || "Failed to add interests");
-      }
-      throw new Error("An unknown error occurred while adding interests");
+      throw getApiError(error, "Failed to add interests");
     }
   }
 

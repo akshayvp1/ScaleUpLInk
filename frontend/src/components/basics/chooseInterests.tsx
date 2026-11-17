@@ -5,20 +5,15 @@ import { Check } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   FaChartLine,
-  FaUsers,
-  FaGlobe,
-  FaLaptopCode,
-  FaCog,
-  FaCalculator,
-  FaBookOpen,
-  FaBriefcase,
-  FaFileContract,
+  FaHandshake,
   FaBullhorn,
+  FaRocket,
   FaChartPie,
-  FaBuilding,
-  FaHeadset,
-  FaClipboardList,
+  FaUsers,
   FaLightbulb,
+  FaCog,
+  FaSearch,
+  FaBuilding,
 } from "react-icons/fa";
 
 import { Button } from "../ui/button";
@@ -35,21 +30,52 @@ interface ProfessionalInterestOption {
 }
 
 const professionalInterests: ProfessionalInterestOption[] = [
-  { id: "data_analytics", label: "Data Analytics", icon: <FaChartLine size={20} /> },
-  { id: "leadership", label: "Leadership", icon: <FaUsers size={20} /> },
-  { id: "global_business", label: "Global Business", icon: <FaGlobe size={20} /> },
-  { id: "software_dev", label: "Software Development", icon: <FaLaptopCode size={20} /> },
-  { id: "operations", label: "Operations", icon: <FaCog size={20} /> },
-  { id: "finance", label: "Finance", icon: <FaCalculator size={20} /> },
-  { id: "research", label: "Research", icon: <FaBookOpen size={20} /> },
-  { id: "consulting", label: "Consulting", icon: <FaBriefcase size={20} /> },
-  { id: "legal", label: "Legal", icon: <FaFileContract size={20} /> },
-  { id: "marketing", label: "Marketing", icon: <FaBullhorn size={20} /> },
-  { id: "strategy", label: "Business Strategy", icon: <FaChartPie size={20} /> },
-  { id: "corporate", label: "Corporate Affairs", icon: <FaBuilding size={20} /> },
-  { id: "client_relations", label: "Client Relations", icon: <FaHeadset size={20} /> },
-  { id: "project_mgmt", label: "Project Management", icon: <FaClipboardList size={20} /> },
-  { id: "innovation", label: "Innovation", icon: <FaLightbulb size={20} /> },
+  {
+    id: "startup_investments",
+    label: "Startup Investments",
+    icon: <FaChartLine size={20} />,
+  },
+  {
+    id: "funding_fundraising",
+    label: "Funding and Fundraising",
+    icon: <FaHandshake size={20} />,
+  },
+  {
+    id: "business_networking",
+    label: "Business Networking",
+    icon: <FaUsers size={20} />,
+  },
+  {
+    id: "startup_growth",
+    label: "Startup Growth",
+    icon: <FaRocket size={20} />,
+  },
+  {
+    id: "venture_capital",
+    label: "Venture Capital",
+    icon: <FaChartPie size={20} />,
+  },
+  { id: "mentorship", label: "Mentorship", icon: <FaLightbulb size={20} /> },
+  {
+    id: "technology_innovation",
+    label: "Technology and Innovation",
+    icon: <FaCog size={20} />,
+  },
+  {
+    id: "business_strategy",
+    label: "Business Strategy",
+    icon: <FaBullhorn size={20} />,
+  },
+  {
+    id: "market_research",
+    label: "Market Research",
+    icon: <FaSearch size={20} />,
+  },
+  {
+    id: "business_partnerships",
+    label: "Business Partnerships",
+    icon: <FaBuilding size={20} />,
+  },
 ];
 
 export default function ProfessionalInterestsSelectionPage() {
@@ -68,7 +94,7 @@ export default function ProfessionalInterestsSelectionPage() {
 
   const handleContinue = async () => {
     if (selectedInterests.length === 0) {
-      toast.error("Please select at least one professional interest");
+      toast.error("Please select at least one interest");
       return;
     }
 
@@ -79,20 +105,31 @@ export default function ProfessionalInterestsSelectionPage() {
       return;
     }
 
+    const selectedLabels = professionalInterests
+      .filter((interest) => selectedInterests.includes(interest.id))
+      .map((interest) => interest.label);
+
+    if (!currentTempUser.profession) {
+      toast.error("Please select your profession first.");
+      return;
+    }
+
     const data = {
       email: currentTempUser.email,
       profession: currentTempUser.profession,
-      interest: selectedInterests,
+      interest: selectedLabels,
     };
 
     try {
       setLoading(true);
       await authService.addInterests(data);
-      toast.success("Professional interests saved successfully!");
+      toast.success("Interests saved successfully!");
       navigate("/mainpage/dashboard");
     } catch (error) {
       console.error("Error saving interests:", error);
-      toast.error("Failed to save professional interests");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save interests"
+      );
     } finally {
       setLoading(false);
     }
@@ -108,7 +145,7 @@ export default function ProfessionalInterestsSelectionPage() {
       >
         <AuthHeader
           title="What are you interested in?"
-          description="Select all that apply to your career focus. This helps us personalize your experience."
+          description="Select all that apply. This helps us personalize your experience."
         />
 
         <div

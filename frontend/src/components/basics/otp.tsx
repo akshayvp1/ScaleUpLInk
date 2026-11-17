@@ -13,9 +13,11 @@ import authService from "../../services/user/authService";
 import { RootState } from "../../redux/app/store";
 import { cn } from "../../lib/utils";
 
+const OTP_TTL_SECONDS = 600;
+
 export default function OTPVerificationPage() {
   const [otp, setOtp] = useState<string>("");
-  const [timeLeft, setTimeLeft] = useState<number>(30);
+  const [timeLeft, setTimeLeft] = useState<number>(OTP_TTL_SECONDS);
   const [otpKey, setOtpKey] = useState<number>(0);
   const [role, setRole] = useState<"entrepreneur" | "investor">("entrepreneur");
   const tempUser = useSelector((state: RootState) => state.tempUser.tempUser);
@@ -53,12 +55,14 @@ export default function OTPVerificationPage() {
       await authService.resendOtp(email, role);
 
       setSuccessMessage("OTP resent successfully!");
-      setTimeLeft(30);
+      setTimeLeft(OTP_TTL_SECONDS);
       setOtp("");
       setOtpKey((current) => current + 1);
     } catch (error) {
       console.error("Error resending OTP:", error);
-      setErrorMessage("Failed to resend OTP. Please try again.");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to resend OTP. Please try again."
+      );
     } finally {
       setIsResending(false);
     }
@@ -88,7 +92,9 @@ export default function OTPVerificationPage() {
       }, 2000);
     } catch (error) {
       console.error("Error verifying OTP:", error);
-      setErrorMessage("Invalid OTP. Please try again.");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Invalid OTP. Please try again."
+      );
     } finally {
       setIsVerifying(false);
     }
