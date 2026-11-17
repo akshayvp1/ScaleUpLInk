@@ -14,4 +14,9 @@ export interface IChatRepository {
   markSeen(messageIds: string[], userId: string): Promise<string[]>;
   getUsers(currentUserId: string): Promise<IUser[]>;
   getUsersByIds(ids: string[]): Promise<IUser[]>;
+  getUnreadCountsBySender(receiverId: string): Promise<Record<string, number>>;
+  getMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null>;
 }

@@ -1,5 +1,5 @@
 import { injectable, inject } from "tsyringe";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { IGroup } from "../../interfaces/IGroup";
 import { IGroupMessage } from "../../interfaces/IGroupMessage";
 import { NormalizedChatMessagePayload } from "../../interfaces/IMessage";
@@ -83,16 +83,63 @@ class GroupRepository implements IGroupRepository {
   }
 
   async markGroupMessagesSeen(messageIds: string[], userId: string): Promise<void> {
-    const groups = await this.groupModel
-      .find({ members: userId })
-      .select("_id")
-      .lean();
-    const groupIds = groups.map((group) => group._id);
+    const groupIds = await this.getMemberGroupIds(userId);
 
     await this.groupMessageModel.updateMany(
       { _id: { $in: messageIds }, groupId: { $in: groupIds } },
       { $addToSet: { seenBy: userId } }
     );
+  }
+
+  async getGroupUnreadCounts(userId: string): Promise<Record<string, number>> {
+    const groupIds = await this.getMemberGroupIds(userId);
+    if (groupIds.length === 0) return {};
+
+    const rows = await this.groupMessageModel.aggregate<{
+      _id: Types.ObjectId;
+      count: number;
+    }>([
+      {
+        $match: {
+          groupId: { $in: groupIds },
+          seenBy: { $ne: new Types.ObjectId(userId) },
+        },
+      },
+      { $group: { _id: "$groupId", count: { $sum: 1 } } },
+    ]);
+
+    return rows.reduce<Record<string, number>>((counts, row) => {
+      counts[String(row._id)] = row.count;
+      return counts;
+    }, {});
+  }
+
+  async getGroupMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null> {
+    if (!Types.ObjectId.isValid(messageId) || !Types.ObjectId.isValid(recipientId)) {
+      return null;
+    }
+
+    const groupIds = await this.getMemberGroupIds(recipientId);
+    const message = await this.groupMessageModel
+      .findOne({ _id: messageId, groupId: { $in: groupIds } })
+      .select("senderId")
+      .lean();
+
+    return message ? String(message.senderId) : null;
+  }
+
+  private async getMemberGroupIds(userId: string): Promise<Types.ObjectId[]> {
+    if (!Types.ObjectId.isValid(userId)) return [];
+
+    const groups = await this.groupModel
+      .find({ members: new Types.ObjectId(userId) })
+      .select("_id")
+      .lean();
+
+    return groups.map((group) => group._id);
   }
 }
 

@@ -5,6 +5,7 @@ export interface ToastNotification {
   id: string;
   title: string;
   body: string;
+  data?: Record<string, string>;
 }
 
 interface NotificationToastProps {

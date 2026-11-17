@@ -476,16 +476,16 @@ const OtherProfileComponent: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex-grow pt-2 text-center md:text-left">
+              <div className="min-w-0 flex-grow pt-2 text-center md:text-left">
                 <div className="mb-4 flex flex-col md:flex-row md:items-center md:gap-4">
-                  <h1 className="mb-2 text-2xl font-bold text-foreground [font-family:var(--font-display)] md:mb-0">
+                  <h1 className="mb-2 break-words text-2xl font-bold text-foreground [font-family:var(--font-display)] md:mb-0">
                     {profileData.name || 'Unnamed User'}
                   </h1>
-                  <div className="flex justify-center gap-2 md:justify-start">
+                  <div className="flex flex-wrap justify-center gap-2 md:justify-start">
                     {renderConnectionAction()}
                   </div>
                 </div>
-                <div className="mb-4 flex justify-center gap-2 md:justify-start">
+                <div className="mb-4 flex flex-wrap justify-center gap-2 md:justify-start">
                   <div className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-sm">
                     <span className="font-semibold text-foreground">{posts.length}</span>
                     <span className="ml-1 text-muted-foreground">posts</span>

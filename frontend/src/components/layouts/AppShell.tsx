@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Menu, Search } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { useIsMobile } from "../../hooks/use-mobile";
@@ -32,8 +32,6 @@ interface AppShellProps {
   onLogout: () => void | Promise<void>;
   loggingOut?: boolean;
   profilePath?: string;
-  showSearch?: boolean;
-  onSearchSubmit?: (query: string) => void;
   topBarRight?: ReactNode;
   children?: ReactNode;
 }
@@ -46,8 +44,6 @@ export function AppShell({
   onLogout,
   loggingOut = false,
   profilePath,
-  showSearch = false,
-  onSearchSubmit,
   topBarRight,
   children,
 }: AppShellProps) {
@@ -67,9 +63,19 @@ export function AppShell({
   };
 
   const mobileNavItems = navItems.filter((item) => item.mobileVisible);
-  const isChatRoute = location.pathname === "/chat";
+  const isChatRoute =
+    location.pathname === "/chat" || location.pathname.startsWith("/chat/");
   const isHomeRoute =
     location.pathname === "/home" || location.pathname === "/feeds";
+
+  if (isChatRoute) {
+    return (
+      <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+        <Outlet />
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background text-foreground">
@@ -172,17 +178,6 @@ export function AppShell({
               <Logo short={brandShort} title={brandTitle} className="min-w-0" />
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              {showSearch && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  aria-label="Search"
-                  onClick={() => onSearchSubmit?.("")}
-                >
-                  <Search className="h-5 w-5" />
-                </Button>
-              )}
               {topBarRight}
               <UserMenu
                 user={user}
@@ -193,29 +188,19 @@ export function AppShell({
             </div>
           </header>
         ) : (
-          <TopBar
-            showSearch={showSearch}
-            onSearchSubmit={onSearchSubmit}
-            right={topBarRight}
-          />
+          <TopBar right={topBarRight} />
         )}
 
         <main
           className={cn(
-            "surface-gradient flex-grow",
-            isChatRoute ? "overflow-hidden" : "overflow-y-auto",
+            "surface-gradient flex-grow overflow-y-auto",
             isMobile ? "pb-24" : ""
           )}
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-7xl",
-              isChatRoute
-                ? "h-full max-w-none p-0"
-                : cn(
-                    "px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
-                    isHomeRoute && "py-4 sm:py-5"
-                  )
+              "mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+              isHomeRoute && "py-4 sm:py-5"
             )}
           >
             <Outlet />

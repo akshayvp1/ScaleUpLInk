@@ -51,6 +51,7 @@ export interface ChatMessage {
   eventVenue?: string;
   eventCity?: string;
   seen: boolean;
+  delivered?: boolean;
   createdAt: string;
   updatedAt?: string;
   status?: "sending" | "sent" | "error";
@@ -74,6 +75,7 @@ export interface UserList {
   role?: string;
   profileImage?: string;
   lastSeen?: string | null;
+  unreadCount?: number;
 }
 
 export interface LogoutResponse {
@@ -106,6 +108,7 @@ export interface Group {
   members: GroupMember[];
   createdAt: string;
   updatedAt: string;
+  unreadCount?: number;
 }
 
 export interface GroupMessage {
@@ -132,6 +135,7 @@ export interface GroupMessage {
   eventVenue?: string;
   eventCity?: string;
   seenBy: string[];
+  delivered?: boolean;
   createdAt: string;
   status?: "sending" | "sent" | "error";
 }

@@ -13,4 +13,9 @@ export interface IChatService {
   getMessages(userA: string, userB: string): Promise<IMessage[]>;
   markSeen(messageIds: string[], userId: string): Promise<string[]>;
   getUsers(userId: string): Promise<IUser[]>;
+  getUnreadCountsBySender(userId: string): Promise<Record<string, number>>;
+  getMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null>;
 }

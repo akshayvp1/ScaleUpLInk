@@ -8,4 +8,5 @@ export interface IGroup extends Document {
   avatar: string;
   createdAt: Date;
   updatedAt: Date;
+  unreadCount?: number;
 }

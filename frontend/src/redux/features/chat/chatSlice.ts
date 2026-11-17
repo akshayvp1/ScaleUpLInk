@@ -74,6 +74,27 @@ const chatSlice = createSlice({
       );
     },
 
+    markMessageDelivered: (state, action: PayloadAction<string>) => {
+      state.messages = state.messages.map((msg) =>
+        msg._id === action.payload ? { ...msg, delivered: true } : msg
+      );
+    },
+
+    incrementContactUnread: (state, action: PayloadAction<string>) => {
+      if (!action.payload) return;
+      const contact = state.contacts.find((item) => item._id === action.payload);
+      if (contact) {
+        contact.unreadCount = (contact.unreadCount ?? 0) + 1;
+      }
+    },
+
+    resetContactUnread: (state, action: PayloadAction<string>) => {
+      const contact = state.contacts.find((item) => item._id === action.payload);
+      if (contact) {
+        contact.unreadCount = 0;
+      }
+    },
+
     // was: clearChatState
     clearChat: (state) => {
       state.selectedContact = null;
@@ -91,6 +112,9 @@ export const {
   replaceMessage,
   markMessageError,
   markMessagesSeen,
+  markMessageDelivered,
+  incrementContactUnread,
+  resetContactUnread,
   clearChat,
 } = chatSlice.actions;
 

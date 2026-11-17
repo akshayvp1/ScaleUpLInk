@@ -131,7 +131,30 @@ class ChatService implements IChatService {
       ),
     ];
 
-    return await this.chatRepository.getUsersByIds(otherUserIds);
+    const users = await this.chatRepository.getUsersByIds(otherUserIds);
+    const unreadCounts = await this.chatRepository.getUnreadCountsBySender(userId);
+
+    return users.map(
+      (user) =>
+        ({
+          ...user.toObject(),
+          unreadCount: unreadCounts[String(user._id)] ?? 0,
+        }) as unknown as IUser
+    );
+  }
+
+  async getUnreadCountsBySender(userId: string): Promise<Record<string, number>> {
+    return await this.chatRepository.getUnreadCountsBySender(userId);
+  }
+
+  async getMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null> {
+    return await this.chatRepository.getMessageSenderForRecipient(
+      messageId,
+      recipientId
+    );
   }
 }
 

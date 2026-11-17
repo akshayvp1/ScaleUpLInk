@@ -11,8 +11,7 @@ import AdminDashboardRouter from "./routes/adminDashboardRoutes";
 import AdminRouter from "./routes/adminRoutes";
 import { ThemeProvider } from "./components/theme-provider";
 import { setupPushNotifications } from "./services/notification/pushClient";
-import { emitNotificationReceived } from "./services/notification/notificationEvents";
-import NotificationToastContainer, { pushToast } from "./components/basics/NotificationToastContainer";
+import NotificationToastContainer from "./components/basics/NotificationToastContainer";
 import NotificationSoundListener from "./components/basics/NotificationSoundListener";
 import CallProvider from "./components/call/CallProvider";
 import { RootState } from "./redux/app/store";
@@ -22,10 +21,7 @@ function App() {
 
   useEffect(() => {
     if (token) {
-      setupPushNotifications((title, body) => {
-        pushToast(title, body);
-        emitNotificationReceived();
-      });
+      void setupPushNotifications();
     }
   }, [token]);
 

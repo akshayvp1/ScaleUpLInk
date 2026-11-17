@@ -6,11 +6,14 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import {
   Send,
-  MoreVertical,
   Phone,
   Video,
   ArrowLeft,
   Users,
+  Check,
+  CheckCheck,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import ChatComposer, {
@@ -337,7 +340,7 @@ export default function GroupChat({ selectedGroup, onBack }: GroupChatProps) {
         <button
           type="button"
           onClick={onBack}
-          className="sm:hidden text-muted-foreground hover:text-foreground mr-1"
+          className="mr-1 text-muted-foreground hover:text-foreground md:hidden"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
@@ -350,7 +353,7 @@ export default function GroupChat({ selectedGroup, onBack }: GroupChatProps) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground">{selectedGroup.name}</p>
+          <p className="truncate text-sm font-bold text-foreground">{selectedGroup.name}</p>
           <p className="text-xs text-muted-foreground">
             {typingText ? (
               <span className="text-primary italic">{typingText}</span>
@@ -390,9 +393,6 @@ export default function GroupChat({ selectedGroup, onBack }: GroupChatProps) {
             aria-label={`Video call ${selectedGroup.name}`}
           >
             <Video className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <MoreVertical className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -455,12 +455,21 @@ export default function GroupChat({ selectedGroup, onBack }: GroupChatProps) {
                       })}
                     </span>
                     {isMe && (
-                      <span className="text-[10px] text-primary-foreground/70">
-                        {message.status === "sending"
-                          ? "⏳"
-                          : (message.seenBy ?? []).length > 1
-                          ? "✓✓"
-                          : "✓"}
+                      <span className="text-primary-foreground/70">
+                        {message.status === "sending" ? (
+                          <Clock className="h-3.5 w-3.5" aria-label="Sending" />
+                        ) : message.status === "error" ? (
+                          <AlertCircle className="h-3.5 w-3.5" aria-label="Failed" />
+                        ) : (message.seenBy ?? []).length > 1 ? (
+                          <CheckCheck
+                            className="h-3.5 w-3.5 text-sky-300"
+                            aria-label="Read"
+                          />
+                        ) : message.delivered ? (
+                          <CheckCheck className="h-3.5 w-3.5" aria-label="Delivered" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" aria-label="Sent" />
+                        )}
                       </span>
                     )}
                     {message.status === "error" && (

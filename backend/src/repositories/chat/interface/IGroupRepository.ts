@@ -18,4 +18,9 @@ export interface IGroupRepository {
   getGroupMessages(groupId: string): Promise<IGroupMessage[]>;
   getGroupMemberIds(groupId: string): Promise<string[]>;
   markGroupMessagesSeen(messageIds: string[], userId: string): Promise<void>;
+  getGroupUnreadCounts(userId: string): Promise<Record<string, number>>;
+  getGroupMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null>;
 }

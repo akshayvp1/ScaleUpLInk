@@ -16,4 +16,9 @@ export interface IGroupService {
   getGroupMessages(groupId: string, requesterId: string): Promise<IGroupMessage[]>;
   getGroupMemberIds(groupId: string, requesterId: string): Promise<string[]>;
   markGroupMessagesSeen(messageIds: string[], userId: string): Promise<void>;
+  getGroupUnreadCounts(userId: string): Promise<Record<string, number>>;
+  getGroupMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null>;
 }

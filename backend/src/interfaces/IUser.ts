@@ -41,4 +41,5 @@ export interface IUser extends Document {
   savedPost: Types.ObjectId[];
   following: Types.ObjectId[];
   age?: number;
+  unreadCount?: number;
 }

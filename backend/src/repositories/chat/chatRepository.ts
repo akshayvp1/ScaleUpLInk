@@ -1,5 +1,5 @@
 import { injectable, inject } from "tsyringe";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 
 import {
   IMessage,
@@ -79,6 +79,39 @@ class ChatRepository implements IChatRepository {
     return await this.userModel
       .find({ _id: { $in: ids }, isActive: true })
       .select("_id name role profileImage profession");
+  }
+
+  async getUnreadCountsBySender(receiverId: string): Promise<Record<string, number>> {
+    if (!Types.ObjectId.isValid(receiverId)) return {};
+
+    const rows = await this.messageModel.aggregate<{
+      _id: Types.ObjectId;
+      count: number;
+    }>([
+      { $match: { receiverId: new Types.ObjectId(receiverId), seen: false } },
+      { $group: { _id: "$senderId", count: { $sum: 1 } } },
+    ]);
+
+    return rows.reduce<Record<string, number>>((counts, row) => {
+      counts[String(row._id)] = row.count;
+      return counts;
+    }, {});
+  }
+
+  async getMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null> {
+    if (!Types.ObjectId.isValid(messageId) || !Types.ObjectId.isValid(recipientId)) {
+      return null;
+    }
+
+    const message = await this.messageModel
+      .findOne({ _id: messageId, receiverId: recipientId })
+      .select("senderId")
+      .lean();
+
+    return message ? String(message.senderId) : null;
   }
 }
 

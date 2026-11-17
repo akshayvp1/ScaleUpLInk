@@ -472,7 +472,8 @@ export async function setupPushNotifications(
          */
         pushToast(
           title,
-          body
+          body,
+          data
         );
 
 

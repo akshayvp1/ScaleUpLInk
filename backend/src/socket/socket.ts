@@ -352,6 +352,25 @@ export const initializeSocket = (io: Server) => {
       }
     );
 
+    socket.on("message_delivered", async (data: { messageId?: string }) => {
+      try {
+        if (!data?.messageId) return;
+
+        const senderId = await chatService.getMessageSenderForRecipient(
+          data.messageId,
+          userId
+        );
+
+        if (senderId && senderId !== userId) {
+          io.to(senderId).emit("message_delivered", {
+            messageId: data.messageId,
+          });
+        }
+      } catch (error) {
+        console.error("message_delivered error:", error);
+      }
+    });
+
     socket.on("typing", async (data: { to: string }) => {
       if (!data?.to || data.to === userId) return;
 
@@ -497,6 +516,28 @@ export const initializeSocket = (io: Server) => {
           });
         } catch (error) {
           console.error("mark_group_seen error:", error);
+        }
+      }
+    );
+
+    socket.on(
+      "group_message_delivered",
+      async (data: { messageId?: string }) => {
+        try {
+          if (!data?.messageId) return;
+
+          const senderId = await groupService.getGroupMessageSenderForRecipient(
+            data.messageId,
+            userId
+          );
+
+          if (senderId && senderId !== userId) {
+            io.to(senderId).emit("group_message_delivered", {
+              messageId: data.messageId,
+            });
+          }
+        } catch (error) {
+          console.error("group_message_delivered error:", error);
         }
       }
     );

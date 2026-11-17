@@ -164,7 +164,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
               required
             />
           </div>
-          <div className="flex justify-end space-x-4 mt-6">
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4">
             <button
               type="button"
               onClick={onClose}
@@ -756,7 +756,7 @@ const ProfileComponent: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="mt-4 flex flex-grow flex-col gap-5 text-center md:mt-0 md:pb-1 md:text-left">
+          <div className="mt-4 flex min-w-0 flex-grow flex-col gap-5 text-center md:mt-0 md:pb-1 md:text-left">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground [font-family:var(--font-display)]">
@@ -766,7 +766,7 @@ const ProfileComponent: React.FC = () => {
                   {profileData.profession || profileData.role || ''}
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-2 md:justify-start">
+              <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
                 {isOwnProfile ? (
                   <>
                     <button
@@ -789,7 +789,7 @@ const ProfileComponent: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-center gap-5 md:justify-start">
+            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
               <div className="rounded-lg bg-muted/60 px-3 py-1.5">
                 <span className="text-sm font-bold text-foreground">{posts.length}</span>
                 <span className="ml-1 text-xs text-muted-foreground">posts</span>
@@ -803,7 +803,7 @@ const ProfileComponent: React.FC = () => {
                 <span className="ml-1 text-xs text-muted-foreground">connections</span>
               </button>
             </div>
-            <p className="mx-auto max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground md:mx-0">
+            <p className="mx-auto max-w-2xl whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground md:mx-0">
               {profileData.bio || 'No bio yet.'}
             </p>
           </div>
@@ -883,7 +883,7 @@ const ProfileComponent: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="mt-6 flex justify-end space-x-4">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4">
           <button 
             onClick={() => setIsEditModalOpen(false)}
             className="px-6 py-2 text-muted-foreground hover:bg-muted rounded-md"
@@ -1141,7 +1141,7 @@ const ProfileComponent: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-3 pb-10 sm:px-5">
       {renderProfileHeader()}
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
         <div className="flex border-b border-border/70">

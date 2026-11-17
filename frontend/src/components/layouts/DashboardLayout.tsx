@@ -9,7 +9,6 @@ import {
   Newspaper,
   Bell,
   Users,
-  Search,
   Briefcase,
 } from "lucide-react";
 import { useSelector } from "react-redux";
@@ -50,7 +49,6 @@ const DashboardLayout = () => {
 
   const navigationItems: AppNavItem[] = [
     { icon: Home, label: "Home", path: "/home", mobileVisible: true },
-    { icon: Search, label: "Search", path: "/search", mobileVisible: true },
     { icon: Briefcase, label: "Investors", path: "/investors" },
     {
       icon: PlusCircle,
@@ -81,10 +79,6 @@ const DashboardLayout = () => {
       onLogout={handleLogout}
       loggingOut={isLoggingOut}
       profilePath="/profile"
-      showSearch
-      onSearchSubmit={(query) =>
-        navigate(`/search${query ? `?q=${encodeURIComponent(query)}` : ""}`)
-      }
       topBarRight={
         <>
           <NotificationBell />

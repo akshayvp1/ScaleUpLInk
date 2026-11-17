@@ -129,6 +129,21 @@ socket.io.on("reconnect_failed", () => {
   console.error("❌ [socket] reconnect failed");
 });
 
+// Acknowledge delivery for every incoming message, even when the chat screen
+// is not mounted. The backend validates the message/recipient before telling
+// the sender, so this cannot be spoofed into a false delivered receipt.
+socket.on("receive_message", (payload: { _id?: string }) => {
+  if (payload?._id) {
+    socket.emit("message_delivered", { messageId: payload._id });
+  }
+});
+
+socket.on("receive_group_message", (payload: { _id?: string }) => {
+  if (payload?._id) {
+    socket.emit("group_message_delivered", { messageId: payload._id });
+  }
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────
 
 /**

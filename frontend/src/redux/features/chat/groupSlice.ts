@@ -55,6 +55,24 @@ const groupSlice = createSlice({
           : { ...message, seenBy: [...seenBy, action.payload.userId] };
       });
     },
+    markGroupMessageDelivered: (state, action: PayloadAction<string>) => {
+      state.groupMessages = state.groupMessages.map((message) =>
+        message._id === action.payload ? { ...message, delivered: true } : message
+      );
+    },
+    incrementGroupUnread: (state, action: PayloadAction<string>) => {
+      if (!action.payload) return;
+      const group = state.groups.find((item) => item._id === action.payload);
+      if (group) {
+        group.unreadCount = (group.unreadCount ?? 0) + 1;
+      }
+    },
+    resetGroupUnread: (state, action: PayloadAction<string>) => {
+      const group = state.groups.find((item) => item._id === action.payload);
+      if (group) {
+        group.unreadCount = 0;
+      }
+    },
     addGroup: (state, action: PayloadAction<Group>) => {
       state.groups.unshift(action.payload);
     },
@@ -74,6 +92,9 @@ export const {
   replaceGroupMessage,
   markGroupMessageError,
   markGroupMessagesSeen,
+  markGroupMessageDelivered,
+  incrementGroupUnread,
+  resetGroupUnread,
   addGroup,
   clearGroupChat,
 } = groupSlice.actions;

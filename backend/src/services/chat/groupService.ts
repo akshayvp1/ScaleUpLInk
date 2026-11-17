@@ -80,7 +80,16 @@ class GroupService implements IGroupService {
   }
 
   async getGroupsForUser(userId: string): Promise<IGroup[]> {
-    return await this.groupRepository.getGroupsForUser(userId);
+    const groups = await this.groupRepository.getGroupsForUser(userId);
+    const unreadCounts = await this.groupRepository.getGroupUnreadCounts(userId);
+
+    return groups.map(
+      (group) =>
+        ({
+          ...group.toObject(),
+          unreadCount: unreadCounts[String(group._id)] ?? 0,
+        }) as unknown as IGroup
+    );
   }
 
   async getGroupById(groupId: string): Promise<IGroup | null> {
@@ -170,6 +179,20 @@ class GroupService implements IGroupService {
 
   async markGroupMessagesSeen(messageIds: string[], userId: string): Promise<void> {
     await this.groupRepository.markGroupMessagesSeen(messageIds, userId);
+  }
+
+  async getGroupUnreadCounts(userId: string): Promise<Record<string, number>> {
+    return await this.groupRepository.getGroupUnreadCounts(userId);
+  }
+
+  async getGroupMessageSenderForRecipient(
+    messageId: string,
+    recipientId: string
+  ): Promise<string | null> {
+    return await this.groupRepository.getGroupMessageSenderForRecipient(
+      messageId,
+      recipientId
+    );
   }
 }
 

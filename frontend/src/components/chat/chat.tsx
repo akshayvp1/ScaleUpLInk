@@ -5,14 +5,16 @@ import { toast } from "react-hot-toast";
 import {
   Send,
   Search,
-  MoreVertical,
   Phone,
   Video,
   ArrowLeft,
   Users,
   Plus,
-  MessageSquare,
   Briefcase,
+  Check,
+  CheckCheck,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -29,12 +31,23 @@ import {
   replaceMessage,
   markMessageError,
   markMessagesSeen,
+  markMessageDelivered,
+  incrementContactUnread,
+  resetContactUnread,
 } from "../../redux/features/chat/chatSlice";
 import {
   setGroups,
   setSelectedGroup,
+  markGroupMessageDelivered,
+  incrementGroupUnread,
+  resetGroupUnread,
 } from "../../redux/features/chat/groupSlice";
-import type { ChatMessage, SharedPostPayload, UserList } from "../../types/chat/types";
+import type {
+  ChatMessage,
+  Group,
+  SharedPostPayload,
+  UserList,
+} from "../../types/chat/types";
 import chatService from "../../services/chat/chatService";
 import groupService from "../../services/chat/groupService";
 import { socket } from "../../socket/socket";
@@ -44,7 +57,6 @@ import CreateGroupModal from "../../components/chat/CreateGroupModal";
 import ContactInfoModal from "./ContactInfoModal";
 
 const BRAND_COLOR = "var(--primary)";
-type Tab = "direct" | "groups";
 
 function getUserIdFromToken(token?: string | null): string {
   if (!token) return "";
@@ -130,17 +142,21 @@ export default function Chat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("direct");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedContactRef = useRef<UserList | null>(null);
+  const selectedGroupRef = useRef<string | null>(null);
 
   useEffect(() => {
     selectedContactRef.current = selectedContact;
   }, [selectedContact]);
+
+  useEffect(() => {
+    selectedGroupRef.current = selectedGroup?._id ?? null;
+  }, [selectedGroup?._id]);
 
   // If a conversation is already selected when the chat screen opens (for
   // example after tapping "Message" on a profile), go straight to it on
@@ -149,7 +165,15 @@ export default function Chat() {
     if (selectedContact || selectedGroup) {
       setShowSidebar(false);
     }
-  }, [selectedContact?._id, selectedGroup?._id]);
+
+    if (selectedContact) {
+      dispatch(resetContactUnread(selectedContact._id));
+    }
+
+    if (selectedGroup) {
+      dispatch(resetGroupUnread(selectedGroup._id));
+    }
+  }, [selectedContact?._id, selectedGroup?._id, dispatch]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -182,6 +206,7 @@ export default function Chat() {
       if (group) {
         dispatch(setSelectedGroup(group));
         dispatch(setSelectedContact(null));
+        dispatch(resetGroupUnread(group._id));
         setShowSidebar(false);
       }
 
@@ -194,6 +219,7 @@ export default function Chat() {
       if (contact) {
         dispatch(setSelectedContact(contact));
         dispatch(setSelectedGroup(null));
+        dispatch(resetContactUnread(contact._id));
         setShowSidebar(false);
         setIsTyping(false);
       }
@@ -224,6 +250,8 @@ export default function Chat() {
             senderId: selectedContact._id,
           });
         }
+
+        dispatch(resetContactUnread(selectedContact._id));
       }
     }
     fetchMessages();
@@ -249,15 +277,17 @@ export default function Chat() {
     }
 
     function onReceiveMessage(payload: ChatMessage) {
+      if (payload.senderId === currentUserId) return;
+
       const contact = selectedContactRef.current;
 
-      // Ignore messages that belong to a different conversation; the chat
-      // screen only renders the currently selected thread.
       if (!contact || payload.senderId !== contact._id) {
+        dispatch(incrementContactUnread(payload.senderId));
         return;
       }
 
       dispatch(addMessage({ ...payload, status: "sent" }));
+      dispatch(resetContactUnread(payload.senderId));
 
       socket.emit("mark_seen", {
         messageIds: [payload._id],
@@ -265,8 +295,24 @@ export default function Chat() {
       });
     }
 
+    function onReceiveGroupMessage(payload: { groupId: string; senderId?: string }) {
+      if (payload.senderId === currentUserId) return;
+
+      if (selectedGroupRef.current !== payload.groupId) {
+        dispatch(incrementGroupUnread(payload.groupId));
+      }
+    }
+
     function onMessagesSeen({ messageIds }: { messageIds: string[] }) {
       dispatch(markMessagesSeen(messageIds));
+    }
+
+    function onMessageDelivered({ messageId }: { messageId?: string }) {
+      if (messageId) dispatch(markMessageDelivered(messageId));
+    }
+
+    function onGroupMessageDelivered({ messageId }: { messageId?: string }) {
+      if (messageId) dispatch(markGroupMessageDelivered(messageId));
     }
 
     function onUserStatus({
@@ -309,7 +355,10 @@ export default function Chat() {
 
     socket.on("message_sent", onMessageSent);
     socket.on("receive_message", onReceiveMessage);
+    socket.on("receive_group_message", onReceiveGroupMessage);
     socket.on("messages_seen", onMessagesSeen);
+    socket.on("message_delivered", onMessageDelivered);
+    socket.on("group_message_delivered", onGroupMessageDelivered);
     socket.on("user_status", onUserStatus);
     socket.on("online_users", onOnlineUsers);
     socket.on("typing", onTyping);
@@ -321,7 +370,10 @@ export default function Chat() {
     return () => {
       socket.off("message_sent", onMessageSent);
       socket.off("receive_message", onReceiveMessage);
+      socket.off("receive_group_message", onReceiveGroupMessage);
       socket.off("messages_seen", onMessagesSeen);
+      socket.off("message_delivered", onMessageDelivered);
+      socket.off("group_message_delivered", onGroupMessageDelivered);
       socket.off("user_status", onUserStatus);
       socket.off("online_users", onOnlineUsers);
       socket.off("typing", onTyping);
@@ -333,13 +385,15 @@ export default function Chat() {
   function selectContact(user: UserList) {
     dispatch(setSelectedContact(user));
     dispatch(setSelectedGroup(null));
+    dispatch(resetContactUnread(user._id));
     setShowSidebar(false);
     setIsTyping(false);
   }
 
-  function selectGroup(group: Parameters<typeof setSelectedGroup>[0]) {
+  function selectGroup(group: Group) {
     dispatch(setSelectedGroup(group));
     dispatch(setSelectedContact(null));
+    dispatch(resetGroupUnread(group._id));
     setShowSidebar(false);
   }
 
@@ -459,184 +513,121 @@ export default function Chat() {
   const nothingSelected = !selectedContact && !selectedGroup;
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-background font-sans">
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-background font-sans">
       {/* Sidebar */}
       <div
         className={`${
-          showSidebar ? "flex" : "hidden"
-        } h-full min-h-0 w-full shrink-0 flex-col border-r border-border/70 bg-card sm:flex sm:w-80 xl:w-[360px]`}
+          showSidebar ? "flex" : "hidden md:flex"
+        } h-full min-h-0 w-full shrink-0 flex-col border-r border-border/70 bg-card md:w-80 xl:w-[360px]`}
       >
-        {/* Header with Messages title */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-4">
-          <p className="text-lg font-extrabold text-foreground [font-family:var(--font-display)]">Messages</p>
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+          <p className="text-lg font-extrabold text-foreground [font-family:var(--font-display)]">Chats</p>
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            className="relative text-muted-foreground hover:text-foreground"
+            onClick={() => setShowCreateGroup(true)}
+            aria-label="Create new group"
+            title="New group"
           >
-            <MoreVertical className="h-5 w-5" />
+            <Users className="h-5 w-5" />
+            <Plus className="absolute bottom-1.5 right-1.5 h-3 w-3 rounded-full bg-card" />
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="px-4 py-3 shrink-0">
+        <div className="shrink-0 px-4 py-3">
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search..."
+              placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="rounded-xl border-transparent bg-muted pl-9 text-sm"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mx-4 mb-2 flex shrink-0 gap-1 rounded-xl bg-muted/70 p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("direct")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
-              activeTab === "direct"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Direct
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("groups")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
-              activeTab === "groups"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            Groups
-          </button>
-        </div>
-
-        {/* Contact / Group List */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {activeTab === "direct" && (
-            <>
-              {filteredContacts.length > 0 ? (
-                filteredContacts.map((user) => (
-                  <button
-                    key={user._id}
-                    type="button"
-                    onClick={() => selectContact(user)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left hover:bg-muted/60 ${
-                      selectedContact?._id === user._id ? "bg-primary/10" : ""
-                    }`}
-                  >
-                    <Avatar
-                      initials={user.name.substring(0, 2).toUpperCase()}
-                      src={user.profileImage}
-                      online={onlineUsers.has(user._id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {user.profession || "Member"}
-                      </p>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 mt-16 px-4 text-center">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10">
-                    <Search
-                      className="h-5 w-5"
-                      style={{ color: BRAND_COLOR }}
-                    />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">
-                    No contacts found
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Direct messaging unlocks after a connection request is
-                    accepted.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-1 gap-1.5"
-                    onClick={() => navigate("/investors")}
-                  >
-                    <Briefcase className="h-4 w-4" /> Discover investors
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "groups" && (
-            <>
-              <div className="px-4 py-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroup(true)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors text-sm font-semibold text-muted-foreground hover:text-primary"
-                >
-                  <Plus className="h-4 w-4" />
-                  New Group
-                </button>
+          {filteredContacts.map((user) => (
+            <button
+              key={user._id}
+              type="button"
+              onClick={() => selectContact(user)}
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${
+                selectedContact?._id === user._id ? "bg-primary/10" : ""
+              }`}
+            >
+              <Avatar
+                initials={user.name.substring(0, 2).toUpperCase()}
+                src={user.profileImage}
+                online={onlineUsers.has(user._id)}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {user.name}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user.profession || "Member"}
+                </p>
               </div>
-
-              {filteredGroups.length > 0 ? (
-                filteredGroups.map((group) => (
-                  <button
-                    key={group._id}
-                    type="button"
-                    onClick={() => selectGroup(group)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left hover:bg-muted/60 ${
-                      selectedGroup?._id === group._id ? "bg-primary/10" : ""
-                    }`}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
-                    >
-                      <Users
-                        className="h-5 w-5"
-                        style={{ color: BRAND_COLOR }}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        {group.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {group.members.length} member
-                        {group.members.length !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 mt-10 px-4 text-center">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10">
-                    <Users
-                      className="h-5 w-5"
-                      style={{ color: BRAND_COLOR }}
-                    />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">
-                    No groups yet
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Create one to get started.
-                  </p>
-                </div>
+              {(user.unreadCount ?? 0) > 0 && (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {user.unreadCount}
+                </span>
               )}
-            </>
+            </button>
+          ))}
+
+          {filteredGroups.map((group) => (
+            <button
+              key={group._id}
+              type="button"
+              onClick={() => selectGroup(group)}
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${
+                selectedGroup?._id === group._id ? "bg-primary/10" : ""
+              }`}
+            >
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
+              >
+                <Users className="h-5 w-5" style={{ color: BRAND_COLOR }} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {group.name}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {group.members.length} member{group.members.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              {(group.unreadCount ?? 0) > 0 && (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {group.unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+
+          {filteredContacts.length === 0 && filteredGroups.length === 0 && (
+            <div className="mt-12 flex flex-col items-center gap-2 px-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Search className="h-5 w-5" style={{ color: BRAND_COLOR }} />
+              </div>
+              <p className="text-sm font-semibold text-foreground">No chats found</p>
+              <p className="text-xs text-muted-foreground">
+                Connect with people or create a group to start chatting.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-1 gap-1.5"
+                onClick={() => navigate("/investors")}
+              >
+                <Briefcase className="h-4 w-4" /> Discover investors
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -644,8 +635,8 @@ export default function Chat() {
       {/* Main Chat Area */}
       <div
         className={`${
-          !showSidebar ? "flex" : "hidden"
-        } sm:flex flex-1 flex-col min-w-0 min-h-0 h-full bg-muted/20`}
+          showSidebar ? "hidden md:flex" : "flex"
+        } min-h-0 h-full min-w-0 flex-1 flex-col bg-muted/20`}
       >
         {selectedGroup && (
           <GroupChat
@@ -662,7 +653,7 @@ export default function Chat() {
               <button
                 type="button"
                 onClick={() => setShowSidebar(true)}
-                className="sm:hidden text-muted-foreground hover:text-foreground mr-1"
+                className="mr-1 text-muted-foreground hover:text-foreground md:hidden"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -722,13 +713,6 @@ export default function Chat() {
                 >
                   <Video className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
@@ -780,12 +764,21 @@ export default function Chat() {
                             )}
                           </span>
                           {isMe && (
-                            <span className="text-[10px] text-primary-foreground/80">
-                              {message.status === "sending"
-                                ? "⏳"
-                                : message.seen
-                                ? "✓✓"
-                                : "✓"}
+                            <span className="text-primary-foreground/80">
+                              {message.status === "sending" ? (
+                                <Clock className="h-3.5 w-3.5" aria-label="Sending" />
+                              ) : message.status === "error" ? (
+                                <AlertCircle className="h-3.5 w-3.5" aria-label="Failed" />
+                              ) : message.seen ? (
+                                <CheckCheck
+                                  className="h-3.5 w-3.5 text-sky-300"
+                                  aria-label="Read"
+                                />
+                              ) : message.delivered ? (
+                                <CheckCheck className="h-3.5 w-3.5" aria-label="Delivered" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" aria-label="Sent" />
+                              )}
                             </span>
                           )}
                           {message.status === "error" && (
@@ -829,7 +822,7 @@ export default function Chat() {
 
         {/* Nothing selected */}
         {nothingSelected && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <div className="hidden flex-1 flex-col items-center justify-center gap-3 p-8 text-center md:flex">
             <div className="w-16 h-16 rounded-full flex items-center justify-center bg-primary/10">
               <Send className="h-7 w-7" style={{ color: BRAND_COLOR }} />
             </div>
